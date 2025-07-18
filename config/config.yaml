@@ -1,0 +1,98 @@
+# 数据挖掘器配置文件
+app:
+  name: "crypto-data-miner"
+  version: "1.0.0"
+  log_level: "info"
+
+# 数据库配置
+database:
+  enabled: false
+  driver: "sqlite"
+  host: "localhost"
+  port: 3306
+  username: ""
+  password: ""
+  database: "crypto_data"
+
+# 交易所配置
+exchanges:
+  binance:
+    enabled: true
+    api_url: "https://api.binance.com"
+    websocket_url: "wss://stream.binance.com:9443"
+    # API密钥配置 (可选，用于需要认证的接口)
+    api_key: ""
+    api_secret: ""
+    # 数据获取模式: true=websocket实时模式, false=定时API拉取模式
+    use_websocket: true
+    
+    # 数据拉取配置
+    data_types:
+      ticker:
+        enabled: true
+        symbols: ["BTCUSDT", "ETHUSDT", "BNBUSDT"]
+        interval: "1m"  # 拉取间隔
+      
+      orderbook:
+        enabled: true
+        symbols: ["BTCUSDT", "ETHUSDT"]
+        depth: 20  # 订单簿深度
+        interval: "5s"
+      
+      trades:
+        enabled: true
+        symbols: ["BTCUSDT", "ETHUSDT"]
+        interval: "10s"
+      
+      klines:
+        enabled: true
+        symbols: ["BTCUSDT", "ETHUSDT", "BNBUSDT"]
+        intervals: ["1m", "5m", "1h", "1d"]  # K线周期
+        interval: "1m"  # 拉取间隔
+
+# 调度器配置
+scheduler:
+  enabled: true
+  max_concurrent_jobs: 10
+  
+  # 任务配置
+  jobs:
+    - name: "binance_ticker"
+      exchange: "binance"
+      data_type: "ticker"
+      cron: "0 * * * * *"  # 每分钟执行
+      
+    - name: "binance_orderbook"
+      exchange: "binance"
+      data_type: "orderbook"
+      cron: "*/5 * * * * *"  # 每5秒执行
+      
+    - name: "binance_trades"
+      exchange: "binance"
+      data_type: "trades"
+      cron: "*/10 * * * * *"  # 每10秒执行
+      
+    - name: "binance_klines"
+      exchange: "binance"
+      data_type: "klines"
+      cron: "0 * * * * *"  # 每分钟执行
+
+# 存储配置
+storage:
+  # 文件存储
+  file:
+    enabled: true
+    base_path: "./data"
+    format: "json"  # json, csv
+  
+  # 内存缓存
+  cache:
+    enabled: true
+    max_size: 1000  # 最大缓存条目数
+    ttl: "1h"  # 缓存过期时间
+
+# 监控配置
+monitoring:
+  enabled: true
+  metrics_port: 8080
+  health_check_port: 8081 
