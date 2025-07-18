@@ -24,7 +24,7 @@ exchanges:
     api_key: ""
     api_secret: ""
     # 数据获取模式: true=websocket实时模式, false=定时API拉取模式
-    use_websocket: true
+    use_websocket: false
     
     # 数据拉取配置
     data_types:

@@ -1,78 +1,54 @@
-// Package binance 实现Binance交易所接口
+// Package binance 实现Binance交易所公共接口和结构
 package binance
 
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"sync"
 	"time"
 
-	gws "github.com/gorilla/websocket"
-	"github.com/mooyang-code/data-miner/internal/ipmanager"
 	"github.com/mooyang-code/data-miner/internal/types"
 	"github.com/mooyang-code/data-miner/pkg/cryptotrader/currency"
-	"github.com/mooyang-code/data-miner/pkg/cryptotrader/exchange/websocket"
 	"github.com/mooyang-code/data-miner/pkg/cryptotrader/exchanges/asset"
-	"github.com/mooyang-code/data-miner/pkg/cryptotrader/exchanges/subscription"
 )
 
-// Binance 实现types.ExchangeInterface接口
+// Binance 主要的交易所结构体，包含REST API和WebSocket客户端
 type Binance struct {
-	config      types.BinanceConfig           // Binance配置
-	wsConn      *gws.Conn                     // WebSocket连接
-	wsConnected bool                          // WebSocket连接状态
-	lastPing    time.Time                     // 最后ping时间
-	rateLimit   *types.RateLimit              // 速率限制
+	RestAPI   *BinanceRestAPI     // REST API 客户端
+	WebSocket *BinanceWebSocket   // WebSocket 客户端
+	config    types.BinanceConfig // Binance公共配置
 
-	// 订阅管理
-	subscriptions map[string]types.DataCallback // 订阅回调映射
-	mu            sync.RWMutex                  // 读写锁
-
-	// 停止信号
-	done chan struct{} // 停止信号通道
-
-	// 请求计数器
-	requestCount int64     // 请求计数
-	lastReset    time.Time // 最后重置时间
-
-	// IP管理器
-	ipManager *ipmanager.Manager // IP管理器
-
-	// websocket相关字段
-	Name              string                    // 交易所名称
-	Enabled           bool                      // 是否启用
-	Verbose           bool                      // 详细日志
-	HTTPTimeout       time.Duration             // HTTP超时时间
-	Config            *Config                   // 配置
-	Websocket         *websocket.Manager        // WebSocket管理器
-	ValidateOrderbook bool                      // 验证订单簿
-	obm               *orderbookManager         // 订单簿管理器
-	Features          *Features                 // 功能特性
+	rateLimit    *types.RateLimit // 速率限制
+	requestCount int64            // 请求计数
+	lastReset    time.Time        // 最后重置时间
+	mu           sync.RWMutex     // 读写锁
+	Name         string           // 交易所名称
+	Enabled      bool             // 是否启用
+	Verbose      bool             // 详细日志
+	HTTPTimeout  time.Duration    // HTTP超时时间
 }
 
 // New 创建新的Binance交易所实例
 func New() *Binance {
-	return &Binance{
+	b := &Binance{
 		rateLimit: &types.RateLimit{
 			RequestsPerMinute: 1200,
 			LastRequest:       time.Now(),
 		},
-		subscriptions: make(map[string]types.DataCallback),
-		done:          make(chan struct{}),
-		lastReset:     time.Now(),
-		ipManager:     ipmanager.New(ipmanager.DefaultConfig("stream.binance.com")),
-		Name:          "Binance",
-		Enabled:       true,
-		Verbose:       false,
-		HTTPTimeout:   30 * time.Second,
-		Config: &Config{
-			HTTPTimeout: 30 * time.Second,
-		},
-		ValidateOrderbook: true,
-		Features: &Features{
-			Subscriptions: subscription.List{},
-		},
+		lastReset:   time.Now(),
+		Name:        "Binance",
+		Enabled:     true,
+		Verbose:     false,
+		HTTPTimeout: 30 * time.Second,
 	}
+
+	// 初始化REST API客户端
+	b.RestAPI = NewRestAPI()
+
+	// 初始化WebSocket客户端
+	b.WebSocket = NewWebSocket()
+	return b
 }
 
 // GetName 返回交易所名称
@@ -91,146 +67,47 @@ func (b *Binance) Initialize(config interface{}) error {
 	return nil
 }
 
-// Close 关闭交易所连接
-func (b *Binance) Close() error {
-	close(b.done)
-	if b.ipManager != nil {
-		b.ipManager.Stop()
-	}
-	return b.WsClose()
-}
-
-// Config 交易所配置设置
-type Config struct {
-	HTTPTimeout time.Duration // HTTP超时时间
-}
-
-// Features 交易所支持的功能特性
-type Features struct {
-	Subscriptions subscription.List // 订阅列表
-}
-
-// orderbookManager 定义管理和维护连接与资产间同步的方式
-type orderbookManager struct {
-	state map[currency.Code]map[currency.Code]map[asset.Item]*update // 状态映射
-	sync.Mutex                                                       // 互斥锁
-	jobs chan job                                                    // 任务通道
-}
-
-// update 更新结构
-type update struct {
-	buffer            chan *WebsocketDepthStream // 缓冲通道
-	fetchingBook      bool                       // 是否正在获取订单簿
-	initialSync       bool                       // 是否初始同步
-	needsFetchingBook bool                       // 是否需要获取订单簿
-	lastUpdateID      int64                      // 最后更新ID
-}
-
-// job 定义同步任务，告诉协程通过REST协议获取订单簿
-type job struct {
-	Pair currency.Pair // 交易对
-}
-
 // IsEnabled 返回交易所是否启用
 func (b *Binance) IsEnabled() bool {
 	return b.Enabled
 }
 
-// GetWsAuthStreamKey 获取WebSocket认证流密钥
-func (b *Binance) GetWsAuthStreamKey(ctx context.Context) (string, error) {
-	// 简化实现 - 实际场景中应该调用API
-	return "", nil
-}
+// Close 关闭交易所连接
+func (b *Binance) Close() error {
+	// 关闭WebSocket连接
+	if b.WebSocket != nil {
+		if err := b.WebSocket.WsClose(); err != nil {
+			return err
+		}
+	}
 
-// MaintainWsAuthStreamKey 维护WebSocket认证流密钥
-func (b *Binance) MaintainWsAuthStreamKey(ctx context.Context) error {
-	// 简化实现
+	// 关闭REST API客户端
+	if b.RestAPI != nil {
+		if err := b.RestAPI.Close(); err != nil {
+			return err
+		}
+	}
 	return nil
-}
-
-// GetOrderBook 获取订单簿数据
-func (b *Binance) GetOrderBook(ctx context.Context, params OrderBookDataRequestParams) (*OrderBook, error) {
-	// 简化实现 - 实际场景中应该调用REST API
-	return &OrderBook{}, nil
-}
-
-// MatchSymbolWithAvailablePairs 匹配交易对与可用交易对
-func (b *Binance) MatchSymbolWithAvailablePairs(symbol string, assetType asset.Item, enabled bool) (currency.Pair, error) {
-	// 简化实现
-	pair, err := currency.NewPairFromString(symbol)
-	if err != nil {
-		return currency.EMPTYPAIR, err
-	}
-	return pair, nil
-}
-
-// MatchSymbolCheckEnabled 匹配交易对并检查是否启用
-func (b *Binance) MatchSymbolCheckEnabled(symbol string, assetType asset.Item, enabled bool) (currency.Pair, bool, error) {
-	pair, err := b.MatchSymbolWithAvailablePairs(symbol, assetType, enabled)
-	if err != nil {
-		return currency.EMPTYPAIR, false, err
-	}
-	return pair, true, nil
-}
-
-// GetRequestFormattedPairAndAssetType 获取格式化的交易对和资产类型
-func (b *Binance) GetRequestFormattedPairAndAssetType(symbol string) (currency.Pair, asset.Item, error) {
-	pair, err := currency.NewPairFromString(symbol)
-	if err != nil {
-		return currency.EMPTYPAIR, asset.Empty, err
-	}
-	return pair, asset.Spot, nil
-}
-
-// IsSaveTradeDataEnabled 返回是否启用交易数据保存
-func (b *Binance) IsSaveTradeDataEnabled() bool {
-	return false
-}
-
-// IsTradeFeedEnabled 返回是否启用交易数据推送
-func (b *Binance) IsTradeFeedEnabled() bool {
-	return true
-}
-
-// ParallelChanOp 执行并行通道操作
-func (b *Binance) ParallelChanOp(ctx context.Context, channels subscription.List,
-	fn func(context.Context, subscription.List) error, batchSize int) error {
-	// 简化实现
-	return fn(ctx, channels)
 }
 
 // CheckRateLimit 检查速率限制
 func (b *Binance) CheckRateLimit() error {
-	b.mu.Lock()
-	defer b.mu.Unlock()
-
-	now := time.Now()
-
-	// 每分钟重置计数器
-	if now.Sub(b.lastReset) >= time.Minute {
-		b.requestCount = 0
-		b.lastReset = now
-	}
-
-	// 检查是否超过限制
-	if b.requestCount >= int64(b.rateLimit.RequestsPerMinute) {
-		return fmt.Errorf("速率限制已超出")
-	}
-
-	b.requestCount++
-	b.rateLimit.LastRequest = now
-
-	return nil
+	return b.RestAPI.CheckRateLimit()
 }
 
-// IsConnected 检查是否连接
+// IsConnected 检查连接状态
 func (b *Binance) IsConnected() bool {
-	return b.wsConnected
+	restConnected := b.RestAPI != nil && b.RestAPI.IsConnected()
+	wsConnected := b.WebSocket != nil && b.WebSocket.IsConnected()
+	return restConnected || wsConnected
 }
 
 // GetLastPing 获取最后ping时间
 func (b *Binance) GetLastPing() time.Time {
-	return b.lastPing
+	if b.WebSocket != nil {
+		return b.WebSocket.GetLastPing()
+	}
+	return time.Time{}
 }
 
 // GetRateLimit 获取速率限制信息
@@ -238,94 +115,345 @@ func (b *Binance) GetRateLimit() *types.RateLimit {
 	return b.rateLimit
 }
 
+// REST API 方法代理 - 将调用转发到RestAPI客户端
+
 // GetTicker 获取单个交易对的行情数据
 func (b *Binance) GetTicker(ctx context.Context, symbol types.Symbol) (*types.Ticker, error) {
-	// 简化实现 - 实际应该调用REST API
-	return &types.Ticker{
+	// 调用RestAPI获取Binance特定的数据
+	binanceTicker, err := b.RestAPI.GetTickerBySymbol(ctx, string(symbol))
+	if err != nil {
+		return nil, err
+	}
+
+	// 转换为通用类型
+	ticker := &types.Ticker{
 		Exchange:  types.ExchangeBinance,
 		Symbol:    symbol,
-		Price:     0,
-		Volume:    0,
+		Price:     binanceTicker.LastPrice.Float64(),
+		Volume:    binanceTicker.Volume.Float64(),
+		High24h:   binanceTicker.HighPrice.Float64(),
+		Low24h:    binanceTicker.LowPrice.Float64(),
+		Change24h: binanceTicker.PriceChangePercent.Float64(),
 		Timestamp: time.Now(),
-	}, nil
+	}
+
+	return ticker, nil
 }
 
 // GetOrderbook 获取订单簿数据
 func (b *Binance) GetOrderbook(ctx context.Context, symbol types.Symbol, depth int) (*types.Orderbook, error) {
-	// 简化实现 - 实际应该调用REST API
-	return &types.Orderbook{
+	// 转换symbol为currency.Pair
+	pair, err := currency.NewPairFromString(string(symbol))
+	if err != nil {
+		return nil, err
+	}
+
+	// 调用RestAPI获取Binance特定的数据
+	binanceOrderbook, err := b.RestAPI.GetOrderbook(ctx, pair, depth)
+	if err != nil {
+		return nil, err
+	}
+
+	// 转换为通用类型
+	orderbook := &types.Orderbook{
 		Exchange:  types.ExchangeBinance,
 		Symbol:    symbol,
-		Bids:      []types.OrderbookEntry{},
-		Asks:      []types.OrderbookEntry{},
+		Bids:      make([]types.OrderbookEntry, len(binanceOrderbook.Bids)),
+		Asks:      make([]types.OrderbookEntry, len(binanceOrderbook.Asks)),
 		Timestamp: time.Now(),
-	}, nil
+	}
+
+	// 转换买单
+	for i, bid := range binanceOrderbook.Bids {
+		orderbook.Bids[i] = types.OrderbookEntry{
+			Price:    bid.Price,
+			Quantity: bid.Quantity,
+		}
+	}
+
+	// 转换卖单
+	for i, ask := range binanceOrderbook.Asks {
+		orderbook.Asks[i] = types.OrderbookEntry{
+			Price:    ask.Price,
+			Quantity: ask.Quantity,
+		}
+	}
+
+	return orderbook, nil
 }
 
 // GetTrades 获取交易数据
 func (b *Binance) GetTrades(ctx context.Context, symbol types.Symbol, limit int) ([]types.Trade, error) {
-	// 简化实现 - 实际应该调用REST API
-	return []types.Trade{}, nil
+	// 调用RestAPI获取Binance特定的数据
+	binanceTrades, err := b.RestAPI.GetTradesBySymbol(ctx, string(symbol))
+	if err != nil {
+		return nil, err
+	}
+
+	// 转换为通用类型
+	trades := make([]types.Trade, len(binanceTrades))
+	for i, binanceTrade := range binanceTrades {
+		trades[i] = types.Trade{
+			Exchange:  types.ExchangeBinance,
+			Symbol:    symbol,
+			ID:        fmt.Sprintf("%d", binanceTrade.ID),
+			Price:     binanceTrade.Price,
+			Quantity:  binanceTrade.Quantity,
+			Side:      getSideFromBuyer(binanceTrade.IsBuyerMaker),
+			Timestamp: binanceTrade.Time.Time(),
+		}
+	}
+
+	return trades, nil
 }
 
 // GetKlines 获取K线数据
 func (b *Binance) GetKlines(ctx context.Context, symbol types.Symbol, interval string, limit int) ([]types.Kline, error) {
-	// 简化实现 - 实际应该调用REST API
-	return []types.Kline{}, nil
+	// 转换symbol为currency.Pair
+	pair, err := currency.NewPairFromString(string(symbol))
+	if err != nil {
+		return nil, err
+	}
+
+	// 调用RestAPI获取Binance特定的数据
+	binanceKlines, err := b.RestAPI.GetKlines(ctx, pair, interval, limit, 0, 0)
+	if err != nil {
+		return nil, err
+	}
+
+	// 转换为通用类型
+	klines := make([]types.Kline, len(binanceKlines))
+	for i, binanceKline := range binanceKlines {
+		klines[i] = types.Kline{
+			Exchange:    types.ExchangeBinance,
+			Symbol:      symbol,
+			Interval:    interval,
+			OpenTime:    binanceKline.OpenTime.Time(),
+			CloseTime:   binanceKline.CloseTime.Time(),
+			OpenPrice:   binanceKline.Open.Float64(),
+			HighPrice:   binanceKline.High.Float64(),
+			LowPrice:    binanceKline.Low.Float64(),
+			ClosePrice:  binanceKline.Close.Float64(),
+			Volume:      binanceKline.Volume.Float64(),
+			TradeCount:  binanceKline.TradeCount,
+			TakerVolume: binanceKline.TakerBuyAssetVolume.Float64(),
+		}
+	}
+
+	return klines, nil
 }
 
 // GetMultipleTickers 批量获取行情数据
 func (b *Binance) GetMultipleTickers(ctx context.Context, symbols []types.Symbol) ([]types.Ticker, error) {
-	var tickers []types.Ticker
-	for _, symbol := range symbols {
-		ticker, err := b.GetTicker(ctx, symbol)
-		if err != nil {
-			return nil, err
-		}
-		tickers = append(tickers, *ticker)
+	// 转换symbols为字符串数组
+	symbolStrings := make([]string, len(symbols))
+	for i, symbol := range symbols {
+		symbolStrings[i] = string(symbol)
 	}
+
+	// 调用RestAPI获取Binance特定的数据
+	binanceTickers, err := b.RestAPI.GetMultipleTickers(ctx, symbolStrings)
+	if err != nil {
+		return nil, err
+	}
+
+	// 转换为通用类型
+	tickers := make([]types.Ticker, len(binanceTickers))
+	for i, binanceTicker := range binanceTickers {
+		tickers[i] = types.Ticker{
+			Exchange:  types.ExchangeBinance,
+			Symbol:    types.Symbol(binanceTicker.Symbol),
+			Price:     binanceTicker.LastPrice.Float64(),
+			Volume:    binanceTicker.Volume.Float64(),
+			High24h:   binanceTicker.HighPrice.Float64(),
+			Low24h:    binanceTicker.LowPrice.Float64(),
+			Change24h: binanceTicker.PriceChangePercent.Float64(),
+			Timestamp: time.Now(),
+		}
+	}
+
 	return tickers, nil
 }
 
 // GetMultipleOrderbooks 批量获取订单簿数据
 func (b *Binance) GetMultipleOrderbooks(ctx context.Context, symbols []types.Symbol, depth int) ([]types.Orderbook, error) {
-	var orderbooks []types.Orderbook
-	for _, symbol := range symbols {
-		orderbook, err := b.GetOrderbook(ctx, symbol, depth)
-		if err != nil {
-			return nil, err
-		}
-		orderbooks = append(orderbooks, *orderbook)
+	// 转换symbols为字符串数组
+	symbolStrings := make([]string, len(symbols))
+	for i, symbol := range symbols {
+		symbolStrings[i] = string(symbol)
 	}
+
+	// 调用RestAPI获取Binance特定的数据
+	binanceOrderbooks, err := b.RestAPI.GetMultipleOrderbooks(ctx, symbolStrings, depth)
+	if err != nil {
+		return nil, err
+	}
+
+	// 转换为通用类型
+	orderbooks := make([]types.Orderbook, len(binanceOrderbooks))
+	for i, binanceOrderbook := range binanceOrderbooks {
+		orderbooks[i] = types.Orderbook{
+			Exchange:  types.ExchangeBinance,
+			Symbol:    types.Symbol(binanceOrderbook.Symbol),
+			Bids:      make([]types.OrderbookEntry, len(binanceOrderbook.Bids)),
+			Asks:      make([]types.OrderbookEntry, len(binanceOrderbook.Asks)),
+			Timestamp: time.Now(),
+		}
+
+		// 转换买单
+		for j, bid := range binanceOrderbook.Bids {
+			orderbooks[i].Bids[j] = types.OrderbookEntry{
+				Price:    bid.Price,
+				Quantity: bid.Quantity,
+			}
+		}
+
+		// 转换卖单
+		for j, ask := range binanceOrderbook.Asks {
+			orderbooks[i].Asks[j] = types.OrderbookEntry{
+				Price:    ask.Price,
+				Quantity: ask.Quantity,
+			}
+		}
+	}
+
 	return orderbooks, nil
 }
 
+// 辅助函数
+
+// parseFloat64 安全地将字符串转换为float64
+func parseFloat64(s string) float64 {
+	if s == "" {
+		return 0
+	}
+	f, err := strconv.ParseFloat(s, 64)
+	if err != nil {
+		return 0
+	}
+	return f
+}
+
+// getSideFromBuyer 根据isBuyerMaker判断交易方向
+func getSideFromBuyer(isBuyerMaker bool) string {
+	if isBuyerMaker {
+		return "buy"
+	}
+	return "sell"
+}
+
+// WebSocket 方法代理 - 将调用转发到WebSocket客户端
+
 // SubscribeTicker 订阅行情数据
 func (b *Binance) SubscribeTicker(symbols []types.Symbol, callback types.DataCallback) error {
-	// 简化实现 - 实际应该通过websocket订阅
-	return nil
+	return b.WebSocket.SubscribeTicker(symbols, callback)
 }
 
 // SubscribeOrderbook 订阅订单簿数据
 func (b *Binance) SubscribeOrderbook(symbols []types.Symbol, callback types.DataCallback) error {
-	// 简化实现 - 实际应该通过websocket订阅
-	return nil
+	return b.WebSocket.SubscribeOrderbook(symbols, callback)
 }
 
 // SubscribeTrades 订阅交易数据
 func (b *Binance) SubscribeTrades(symbols []types.Symbol, callback types.DataCallback) error {
-	// 简化实现 - 实际应该通过websocket订阅
-	return nil
+	return b.WebSocket.SubscribeTrades(symbols, callback)
 }
 
 // SubscribeKlines 订阅K线数据
 func (b *Binance) SubscribeKlines(symbols []types.Symbol, intervals []string, callback types.DataCallback) error {
-	// 简化实现 - 实际应该通过websocket订阅
-	return nil
+	return b.WebSocket.SubscribeKlines(symbols, intervals, callback)
 }
 
 // UnsubscribeAll 取消所有订阅
 func (b *Binance) UnsubscribeAll() error {
-	// 简化实现 - 实际应该取消所有websocket订阅
-	return nil
+	return b.WebSocket.UnsubscribeAll()
+}
+
+// WsConnect 连接WebSocket
+func (b *Binance) WsConnect() error {
+	return b.WebSocket.WsConnect()
+}
+
+// WsClose 关闭WebSocket连接
+func (b *Binance) WsClose() error {
+	return b.WebSocket.WsClose()
+}
+
+// IsWsConnected 返回WebSocket是否已连接
+func (b *Binance) IsWsConnected() bool {
+	return b.WebSocket.IsConnected()
+}
+
+// Subscribe 订阅WebSocket频道
+func (b *Binance) Subscribe(channels []string) error {
+	return b.WebSocket.Subscribe(channels)
+}
+
+// Unsubscribe 取消订阅WebSocket频道
+func (b *Binance) Unsubscribe(channels []string) error {
+	return b.WebSocket.Unsubscribe(channels)
+}
+
+// GetIPManagerStatus 获取IP管理器状态信息
+func (b *Binance) GetIPManagerStatus() map[string]interface{} {
+	status := make(map[string]interface{})
+
+	// WebSocket IP管理器状态
+	status["websocket"] = b.WebSocket.GetIPManagerStatus()
+
+	// REST API IP管理器状态
+	if b.RestAPI != nil {
+		// 从RestAPI的状态中获取IP管理器信息
+		restStatus := b.RestAPI.GetStatus()
+		if httpClient, ok := restStatus["http_client"]; ok {
+			if clientStatus, ok := httpClient.(map[string]interface{}); ok {
+				if ipManager, ok := clientStatus["ip_manager"]; ok {
+					status["restapi"] = ipManager
+				} else {
+					status["restapi"] = map[string]interface{}{
+						"running": false,
+						"error":   "IP manager not available",
+					}
+				}
+			} else {
+				status["restapi"] = map[string]interface{}{
+					"running": false,
+					"error":   "HTTP client status not available",
+				}
+			}
+		} else {
+			status["restapi"] = map[string]interface{}{
+				"running": false,
+				"error":   "HTTP client not available",
+			}
+		}
+	} else {
+		status["restapi"] = map[string]interface{}{
+			"running": false,
+			"error":   "REST API not initialized",
+		}
+	}
+	return status
+}
+
+// SubscribeOrderbookWithDepth 订阅订单簿数据（自定义深度）
+func (b *Binance) SubscribeOrderbookWithDepth(symbols []types.Symbol, depth int, updateSpeed string, callback types.DataCallback) error {
+	return b.WebSocket.SubscribeOrderbookWithDepth(symbols, depth, updateSpeed, callback)
+}
+
+// GetActiveSubscriptions 获取当前活跃的订阅列表
+func (b *Binance) GetActiveSubscriptions() []string {
+	return b.WebSocket.GetActiveSubscriptions()
+}
+
+// GetSubscriptionCount 获取当前订阅数量
+func (b *Binance) GetSubscriptionCount() int {
+	return b.WebSocket.GetSubscriptionCount()
+}
+
+// 工具方法
+
+// FormatSymbol 格式化交易对符号
+func FormatSymbol(pair currency.Pair, assetType asset.Item) (string, error) {
+	return pair.Base.String() + pair.Quote.String(), nil
 }
