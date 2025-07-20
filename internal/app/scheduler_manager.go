@@ -23,16 +23,28 @@ func NewSchedulerManager(logger *zap.Logger) *SchedulerManager {
 
 // Setup 设置调度器
 func (sm *SchedulerManager) Setup(config *types.Config, exchanges map[string]types.ExchangeInterface) (*scheduler.Scheduler, error) {
+	sm.logger.Info("开始设置调度器...",
+		zap.Bool("scheduler_enabled", config.Scheduler.Enabled),
+		zap.Bool("use_websocket", config.Exchanges.Binance.UseWebsocket))
+
 	// 创建数据处理回调函数
 	dataCallback := sm.createDataCallback(config)
 
 	// 初始化调度器（仅在非websocket模式下启动）
 	var sched *scheduler.Scheduler
 	if config.Scheduler.Enabled && !config.Exchanges.Binance.UseWebsocket {
-		sched = scheduler.New(sm.logger, exchanges, dataCallback)
+		sm.logger.Info("创建调度器实例...")
+		sched = scheduler.New(sm.logger, exchanges, dataCallback, config)
 
 		// 添加任务
+		sm.logger.Info("开始添加任务...", zap.Int("job_count", len(config.Scheduler.Jobs)))
 		for _, job := range config.Scheduler.Jobs {
+			sm.logger.Info("正在添加任务",
+				zap.String("job_name", job.Name),
+				zap.String("exchange", job.Exchange),
+				zap.String("data_type", job.DataType),
+				zap.String("cron", job.Cron))
+
 			if err := sched.AddJob(job); err != nil {
 				sm.logger.Error("添加任务失败",
 					zap.String("job", job.Name),
@@ -43,6 +55,7 @@ func (sm *SchedulerManager) Setup(config *types.Config, exchanges map[string]typ
 		}
 
 		// 启动调度器
+		sm.logger.Info("启动调度器...")
 		if err := sched.Start(); err != nil {
 			sm.logger.Fatal("启动调度器失败", zap.Error(err))
 			return nil, err
@@ -50,6 +63,10 @@ func (sm *SchedulerManager) Setup(config *types.Config, exchanges map[string]typ
 		sm.logger.Info("调度器启动成功")
 	} else if config.Exchanges.Binance.UseWebsocket {
 		sm.logger.Info("WebSocket模式下跳过调度器启动")
+	} else {
+		sm.logger.Info("调度器未启用或条件不满足",
+			zap.Bool("scheduler_enabled", config.Scheduler.Enabled),
+			zap.Bool("use_websocket", config.Exchanges.Binance.UseWebsocket))
 	}
 
 	return sched, nil

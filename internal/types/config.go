@@ -45,6 +45,7 @@ type BinanceConfig struct {
 	APISecret     string           `yaml:"api_secret"`     // API密钥
 	UseWebsocket  bool             `yaml:"use_websocket"`  // 是否使用websocket模式
 	DataTypes     BinanceDataTypes `yaml:"data_types"`     // 数据类型配置
+	TradablePairs TradablePairsConfig `yaml:"tradable_pairs"` // 可交易交易对配置
 }
 
 // BinanceDataTypes Binance数据类型配置
@@ -83,6 +84,17 @@ type KlinesConfig struct {
 	Symbols   []string `yaml:"symbols"`   // 交易对列表
 	Intervals []string `yaml:"intervals"` // 时间间隔列表
 	Interval  string   `yaml:"interval"`  // 更新间隔
+}
+
+// TradablePairsConfig 可交易交易对配置
+type TradablePairsConfig struct {
+	FetchFromAPI       bool          `yaml:"fetch_from_api"`        // 是否从API获取交易对列表
+	UpdateInterval     time.Duration `yaml:"update_interval"`       // 更新间隔
+	CacheEnabled       bool          `yaml:"cache_enabled"`         // 是否启用缓存
+	CacheTTL           time.Duration `yaml:"cache_ttl"`             // 缓存生存时间
+	SupportedAssets    []string      `yaml:"supported_assets"`      // 支持的资产类型 ["spot", "margin"]
+	AutoUpdate         bool          `yaml:"auto_update"`           // 是否自动更新
+	SkipOnNetworkError bool          `yaml:"skip_on_network_error"` // 网络错误时是否跳过初始化
 }
 
 // SchedulerConfig 调度器配置

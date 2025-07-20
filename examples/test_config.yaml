@@ -1,6 +1,6 @@
-# 数据挖掘器配置文件
+# 测试配置文件
 app:
-  name: "crypto-data-miner"
+  name: "crypto-data-miner-test"
   version: "1.0.0"
   log_level: "info"
 
@@ -34,56 +34,57 @@ exchanges:
       cache_ttl: "2h"              # 缓存生存时间
       supported_assets: ["spot", "margin"]  # 支持的资产类型
       auto_update: true             # 是否自动更新
-      skip_on_network_error: true   # 网络错误时是否跳过初始化
 
     # 数据拉取配置
     data_types:
       ticker:
         enabled: true
-        symbols: ["*"]  # 使用["*"]从API获取所有交易对，或指定具体交易对如["BTCUSDT", "ETHUSDT"]
-        interval: "1m"  # 拉取间隔
-      klines:
-        enabled: true
-        symbols: [ "*" ]  # 使用["*"]从API获取所有交易对
-        intervals: [ "1m", "5m", "1h", "1d" ]  # K线周期
+        symbols: ["BTCUSDT", "ETHUSDT", "BNBUSDT"]  # 指定具体交易对
         interval: "1m"  # 拉取间隔
 
-#      orderbook:
-#        enabled: true
-#        symbols: ["BTCUSDT", "ETHUSDT"]
-#        depth: 20  # 订单簿深度
-#        interval: "5s"
-#
-#      trades:
-#        enabled: true
-#        symbols: ["BTCUSDT", "ETHUSDT"]
-#        interval: "10s"
+      orderbook:
+        enabled: true
+        symbols: ["BTCUSDT", "ETHUSDT"]
+        depth: 20  # 订单簿深度
+        interval: "5s"
+
+      trades:
+        enabled: true
+        symbols: ["BTCUSDT", "ETHUSDT"]
+        interval: "10s"
+
+      klines:
+        enabled: true
+        symbols: ["*"]  # 使用["*"]从cache获取所有交易对
+        intervals: ["1m", "5m", "1h", "1d"]  # K线周期
+        interval: "1m"  # 拉取间隔
 
 # 调度器配置
 scheduler:
   enabled: true
   max_concurrent_jobs: 10
   
-  # 任务配置（优化频控）
+  # 任务配置
   jobs:
     - name: "binance_ticker"
       exchange: "binance"
       data_type: "ticker"
-      cron: "0 */2 * * * *"  # 每2分钟执行（避免频控）
+      cron: "0 * * * * *"  # 每分钟执行
+      
+    - name: "binance_orderbook"
+      exchange: "binance"
+      data_type: "orderbook"
+      cron: "*/5 * * * * *"  # 每5秒执行
+      
+    - name: "binance_trades"
+      exchange: "binance"
+      data_type: "trades"
+      cron: "*/10 * * * * *"  # 每10秒执行
+      
     - name: "binance_klines"
       exchange: "binance"
       data_type: "klines"
-      cron: "30 */2 * * * *"  # 每2分钟执行，错开30秒（避免频控）
-
-#    - name: "binance_orderbook"
-#      exchange: "binance"
-#      data_type: "orderbook"
-#      cron: "*/5 * * * * *"  # 每5秒执行
-#
-#    - name: "binance_trades"
-#      exchange: "binance"
-#      data_type: "trades"
-#      cron: "*/10 * * * * *"  # 每10秒执行
+      cron: "0 * * * * *"  # 每分钟执行
 
 # 存储配置
 storage:
@@ -103,4 +104,4 @@ storage:
 monitoring:
   enabled: true
   metrics_port: 8080
-  health_check_port: 8081 
+  health_check_port: 8081

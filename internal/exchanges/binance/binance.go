@@ -8,9 +8,11 @@ import (
 	"sync"
 	"time"
 
+	"go.uber.org/zap"
+
+	"github.com/mooyang-code/data-miner/internal/exchanges/asset"
 	"github.com/mooyang-code/data-miner/internal/types"
 	"github.com/mooyang-code/data-miner/pkg/cryptotrader/currency"
-	"github.com/mooyang-code/data-miner/pkg/cryptotrader/exchanges/asset"
 )
 
 // Binance 主要的交易所结构体，包含REST API和WebSocket客户端
@@ -27,6 +29,9 @@ type Binance struct {
 	Enabled      bool             // 是否启用
 	Verbose      bool             // 详细日志
 	HTTPTimeout  time.Duration    // HTTP超时时间
+
+	tradablePairsCache *TradablePairsCache // 交易对缓存管理器
+	logger             *zap.Logger
 }
 
 // New 创建新的Binance交易所实例
@@ -48,6 +53,10 @@ func New() *Binance {
 
 	// 初始化WebSocket客户端
 	b.WebSocket = NewWebSocket()
+
+	// 初始化日志记录器（默认使用nop logger）
+	b.logger = zap.NewNop()
+
 	return b
 }
 
@@ -64,6 +73,62 @@ func (b *Binance) Initialize(config interface{}) error {
 	} else {
 		b.config = binanceConfig
 	}
+
+	// 初始化交易对缓存管理器（如果配置启用）
+	if b.config.TradablePairs.FetchFromAPI {
+		if err := b.initializeTradablePairsCache(); err != nil {
+			return fmt.Errorf("failed to initialize tradable pairs cache: %w", err)
+		}
+	}
+
+	return nil
+}
+
+// SetLogger 设置日志记录器
+func (b *Binance) SetLogger(logger *zap.Logger) {
+	if logger != nil {
+		b.logger = logger
+	}
+}
+
+// initializeTradablePairsCache 初始化交易对缓存管理器
+func (b *Binance) initializeTradablePairsCache() error {
+	// 解析支持的资产类型
+	supportedAssets := make([]asset.Item, 0, len(b.config.TradablePairs.SupportedAssets))
+	for _, assetStr := range b.config.TradablePairs.SupportedAssets {
+		switch assetStr {
+		case "spot":
+			supportedAssets = append(supportedAssets, asset.Spot)
+		case "margin":
+			supportedAssets = append(supportedAssets, asset.Margin)
+		default:
+			b.logger.Warn("Unsupported asset type in config", zap.String("asset", assetStr))
+		}
+	}
+
+	// 如果没有配置支持的资产类型，默认支持现货
+	if len(supportedAssets) == 0 {
+		supportedAssets = []asset.Item{asset.Spot}
+	}
+
+	// 创建缓存配置
+	cacheConfig := TradablePairsCacheConfig{
+		UpdateInterval:  b.config.TradablePairs.UpdateInterval,
+		CacheTTL:        b.config.TradablePairs.CacheTTL,
+		SupportedAssets: supportedAssets,
+		AutoUpdate:      b.config.TradablePairs.AutoUpdate,
+	}
+
+	// 设置默认值
+	if cacheConfig.UpdateInterval == 0 {
+		cacheConfig.UpdateInterval = 1 * time.Hour // 默认1小时更新一次
+	}
+	if cacheConfig.CacheTTL == 0 {
+		cacheConfig.CacheTTL = 2 * time.Hour // 默认缓存2小时
+	}
+
+	// 创建缓存管理器
+	b.tradablePairsCache = NewTradablePairsCache(b, b.logger, cacheConfig)
 	return nil
 }
 
@@ -74,6 +139,11 @@ func (b *Binance) IsEnabled() bool {
 
 // Close 关闭交易所连接
 func (b *Binance) Close() error {
+	// 停止交易对缓存管理器
+	if b.tradablePairsCache != nil {
+		b.tradablePairsCache.Stop()
+	}
+
 	// 关闭WebSocket连接
 	if b.WebSocket != nil {
 		if err := b.WebSocket.WsClose(); err != nil {
@@ -136,7 +206,6 @@ func (b *Binance) GetTicker(ctx context.Context, symbol types.Symbol) (*types.Ti
 		Change24h: binanceTicker.PriceChangePercent.Float64(),
 		Timestamp: time.Now(),
 	}
-
 	return ticker, nil
 }
 
@@ -178,7 +247,6 @@ func (b *Binance) GetOrderbook(ctx context.Context, symbol types.Symbol, depth i
 			Quantity: ask.Quantity,
 		}
 	}
-
 	return orderbook, nil
 }
 
@@ -209,38 +277,13 @@ func (b *Binance) GetTrades(ctx context.Context, symbol types.Symbol, limit int)
 
 // GetKlines 获取K线数据
 func (b *Binance) GetKlines(ctx context.Context, symbol types.Symbol, interval string, limit int) ([]types.Kline, error) {
-	// 转换symbol为currency.Pair
-	pair, err := currency.NewPairFromString(string(symbol))
-	if err != nil {
-		return nil, err
-	}
+	// 直接调用RestAPI的GetKlinesForSymbol方法
+	return b.RestAPI.GetKlinesForSymbol(ctx, symbol, interval, limit)
+}
 
-	// 调用RestAPI获取Binance特定的数据
-	binanceKlines, err := b.RestAPI.GetKlines(ctx, pair, interval, limit, 0, 0)
-	if err != nil {
-		return nil, err
-	}
-
-	// 转换为通用类型
-	klines := make([]types.Kline, len(binanceKlines))
-	for i, binanceKline := range binanceKlines {
-		klines[i] = types.Kline{
-			Exchange:    types.ExchangeBinance,
-			Symbol:      symbol,
-			Interval:    interval,
-			OpenTime:    binanceKline.OpenTime.Time(),
-			CloseTime:   binanceKline.CloseTime.Time(),
-			OpenPrice:   binanceKline.Open.Float64(),
-			HighPrice:   binanceKline.High.Float64(),
-			LowPrice:    binanceKline.Low.Float64(),
-			ClosePrice:  binanceKline.Close.Float64(),
-			Volume:      binanceKline.Volume.Float64(),
-			TradeCount:  binanceKline.TradeCount,
-			TakerVolume: binanceKline.TakerBuyAssetVolume.Float64(),
-		}
-	}
-
-	return klines, nil
+// GetTimeAndWeight 获取服务器时间和当前权重使用情况
+func (b *Binance) GetTimeAndWeight(ctx context.Context) (int64, int, error) {
+	return b.RestAPI.GetTimeAndWeight(ctx)
 }
 
 // GetMultipleTickers 批量获取行情数据
@@ -316,7 +359,6 @@ func (b *Binance) GetMultipleOrderbooks(ctx context.Context, symbols []types.Sym
 			}
 		}
 	}
-
 	return orderbooks, nil
 }
 
@@ -449,6 +491,132 @@ func (b *Binance) GetActiveSubscriptions() []string {
 // GetSubscriptionCount 获取当前订阅数量
 func (b *Binance) GetSubscriptionCount() int {
 	return b.WebSocket.GetSubscriptionCount()
+}
+
+// FetchTradablePairs 获取交易所可交易的交易对列表
+func (b *Binance) FetchTradablePairs(ctx context.Context, assetType asset.Item) (currency.Pairs, error) {
+	b.logger.Info("Fetching tradable pairs", zap.String("asset", assetType.String()))
+	if b.RestAPI == nil {
+		return nil, fmt.Errorf("REST API not initialized")
+	}
+
+	// 获取交易所信息
+	exchangeInfo, err := b.RestAPI.GetExchangeInfo(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get exchange info: %w", err)
+	}
+	b.logger.Info("Exchange info fetched", zap.Int("symbols", len(exchangeInfo.Symbols)))
+
+	tradingStatus := "TRADING"
+	var pairs []currency.Pair
+
+	switch assetType {
+	case asset.Spot:
+		pairs = make([]currency.Pair, 0, len(exchangeInfo.Symbols))
+		for _, symbol := range exchangeInfo.Symbols {
+			// 只返回状态为TRADING且允许现货交易的交易对
+			if symbol.Status != tradingStatus || !symbol.IsSpotTradingAllowed {
+				continue
+			}
+
+			pair, err := currency.NewPairFromStrings(symbol.BaseAsset, symbol.QuoteAsset)
+			if err != nil {
+				return nil, fmt.Errorf("failed to create pair from %s/%s: %w",
+					symbol.BaseAsset, symbol.QuoteAsset, err)
+			}
+			pairs = append(pairs, pair)
+		}
+	case asset.Margin:
+		pairs = make([]currency.Pair, 0, len(exchangeInfo.Symbols))
+		for _, symbol := range exchangeInfo.Symbols {
+			// 只返回状态为TRADING且允许保证金交易的交易对
+			if symbol.Status != tradingStatus || !symbol.IsMarginTradingAllowed {
+				continue
+			}
+
+			pair, err := currency.NewPairFromStrings(symbol.BaseAsset, symbol.QuoteAsset)
+			if err != nil {
+				return nil, fmt.Errorf("failed to create pair from %s/%s: %w",
+					symbol.BaseAsset, symbol.QuoteAsset, err)
+			}
+			pairs = append(pairs, pair)
+		}
+	default:
+		return nil, fmt.Errorf("unsupported asset type: %v", assetType)
+	}
+
+	b.logger.Info("Tradable pairs fetched", zap.String("asset", assetType.String()), zap.Int("count", len(pairs)))
+	return pairs, nil
+}
+
+// StartTradablePairsCache 启动交易对缓存管理器
+func (b *Binance) StartTradablePairsCache(ctx context.Context) error {
+	if b.tradablePairsCache == nil {
+		return fmt.Errorf("tradable pairs cache not initialized")
+	}
+	return b.tradablePairsCache.Start(ctx)
+}
+
+// GetTradablePairsFromCache 从缓存获取交易对
+func (b *Binance) GetTradablePairsFromCache(ctx context.Context, assetType asset.Item) (currency.Pairs, error) {
+	if b.tradablePairsCache == nil {
+		// 如果缓存未启用，直接调用API
+		return b.FetchTradablePairs(ctx, assetType)
+	}
+	return b.tradablePairsCache.GetTradablePairs(ctx, assetType)
+}
+
+// GetTradablePairsStats 获取交易对缓存统计信息
+func (b *Binance) GetTradablePairsStats() map[string]interface{} {
+	if b.tradablePairsCache == nil {
+		return map[string]interface{}{
+			"cache_enabled": false,
+		}
+	}
+	return b.tradablePairsCache.GetCacheStats()
+}
+
+// IsSymbolSupported 检查指定交易对是否被支持
+func (b *Binance) IsSymbolSupported(ctx context.Context, symbol currency.Pair, assetType asset.Item) (bool, error) {
+	if b.tradablePairsCache == nil {
+		// 如果缓存未启用，直接调用API检查
+		pairs, err := b.FetchTradablePairs(ctx, assetType)
+		if err != nil {
+			return false, err
+		}
+		for _, pair := range pairs {
+			if pair.Equal(symbol) {
+				return true, nil
+			}
+		}
+		return false, nil
+	}
+	return b.tradablePairsCache.IsSymbolSupported(ctx, symbol, assetType)
+}
+
+// ResolveTradingPairs 解析交易对配置，支持["*"]从API获取所有交易对
+func (b *Binance) ResolveTradingPairs(ctx context.Context, symbols []string, assetType asset.Item) ([]string, error) {
+	// 如果配置为["*"]，从API获取所有交易对
+	if len(symbols) == 1 && symbols[0] == "*" {
+		if b.config.TradablePairs.FetchFromAPI && b.tradablePairsCache != nil {
+			// 从缓存获取
+			return b.tradablePairsCache.GetSupportedSymbols(ctx, assetType)
+		} else {
+			// 直接从API获取
+			pairs, err := b.FetchTradablePairs(ctx, assetType)
+			if err != nil {
+				return nil, err
+			}
+			result := make([]string, len(pairs))
+			for i, pair := range pairs {
+				result[i] = pair.String()
+			}
+			return result, nil
+		}
+	}
+
+	// 返回原始配置的交易对
+	return symbols, nil
 }
 
 // 工具方法

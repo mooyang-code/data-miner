@@ -17,14 +17,13 @@ import (
 
 // Scheduler 调度器
 type Scheduler struct {
-	cron            *cron.Cron
-	logger          *zap.Logger
-	exchanges       map[string]types.ExchangeInterface
-	callback        types.DataCallback
-	jobs            map[string]*JobInfo
-	mutex           sync.RWMutex
-	config          *types.Config // 添加配置字段
-	rateLimitMgr    *RateLimitManager // 频控管理器
+	cron      *cron.Cron
+	logger    *zap.Logger
+	exchanges map[string]types.ExchangeInterface
+	callback  types.DataCallback
+	jobs      map[string]*JobInfo
+	mutex     sync.RWMutex
+	config    *types.Config // 添加配置字段
 }
 
 // JobInfo 任务信息
@@ -52,13 +51,12 @@ const (
 // New 创建新的调度器
 func New(logger *zap.Logger, exchanges map[string]types.ExchangeInterface, callback types.DataCallback, config *types.Config) *Scheduler {
 	return &Scheduler{
-		cron:         cron.New(cron.WithSeconds()),
-		logger:       logger,
-		exchanges:    exchanges,
-		callback:     callback,
-		jobs:         make(map[string]*JobInfo),
-		config:       config,
-		rateLimitMgr: NewRateLimitManager(logger),
+		cron:      cron.New(cron.WithSeconds()),
+		logger:    logger,
+		exchanges: exchanges,
+		callback:  callback,
+		jobs:      make(map[string]*JobInfo),
+		config:    config,
 	}
 }
 
@@ -137,9 +135,7 @@ func (s *Scheduler) createJobFunc(jobConfig types.JobConfig, exchange types.Exch
 
 // executeJob 执行具体的任务
 func (s *Scheduler) executeJob(jobConfig types.JobConfig, exchange types.ExchangeInterface) error {
-	// 根据数据类型设置不同的超时时间
-	timeout := s.getTimeoutForDataType(jobConfig.DataType)
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
 	// 根据数据类型执行不同的操作
@@ -237,9 +233,8 @@ func (s *Scheduler) executeTrades(ctx context.Context, jobConfig types.JobConfig
 	return nil
 }
 
-// executeKlines 执行klines数据获取任务（智能频控版本）
+// executeKlines 执行klines数据获取任务
 func (s *Scheduler) executeKlines(ctx context.Context, jobConfig types.JobConfig, exchange types.ExchangeInterface) error {
-	s.logger.Info("执行klines数据获取任务（智能频控）")
 	symbols := s.getSymbolsForExchange(jobConfig.Exchange, types.DataTypeKlines)
 	intervals := s.getIntervalsForExchange(jobConfig.Exchange)
 
@@ -250,84 +245,29 @@ func (s *Scheduler) executeKlines(ctx context.Context, jobConfig types.JobConfig
 		intervals = []string{"1m"} // 默认1分钟
 	}
 
-	s.logger.Info("开始智能批量获取K线数据",
-		zap.Int("total_symbols", len(symbols)),
-		zap.Strings("intervals", intervals))
-
-	// 为每个interval分别处理
-	for _, interval := range intervals {
-		s.logger.Info("处理K线间隔", zap.String("interval", interval))
-
-		// 使用频控管理器分批处理
-		err := s.rateLimitMgr.ProcessInBatches(ctx, symbols, exchange, func(batch []types.Symbol) error {
-			return s.processBatchKlines(ctx, batch, interval, exchange)
-		})
-
-		if err != nil {
-			s.logger.Error("批量处理K线数据失败",
-				zap.String("interval", interval),
-				zap.Error(err))
-			return err
-		}
-	}
-
-	s.logger.Info("智能批量获取K线数据完成")
-	return nil
-}
-
-// processBatchKlines 处理一批K线数据
-func (s *Scheduler) processBatchKlines(ctx context.Context, symbols []types.Symbol, interval string, exchange types.ExchangeInterface) error {
-	successCount := 0
-	errorCount := 0
-
-	for i, symbol := range symbols {
-		// 检查上下文是否已取消
-		select {
-		case <-ctx.Done():
-			s.logger.Warn("批次处理被取消",
-				zap.String("interval", interval),
-				zap.Int("processed", i),
-				zap.Int("total", len(symbols)),
-				zap.Int("success", successCount),
-				zap.Int("errors", errorCount))
-			return ctx.Err()
-		default:
-		}
-
-		// 为单个API调用设置较短的超时时间
-		apiCtx, apiCancel := context.WithTimeout(ctx, 30*time.Second)
-		klines, err := exchange.GetKlines(apiCtx, symbol, interval, 100) // 默认获取100条
-		apiCancel()
-
-		if err != nil {
-			errorCount++
-			s.logger.Error("获取klines数据失败",
-				zap.String("symbol", string(symbol)),
-				zap.String("interval", interval),
-				zap.Int("symbol_index", i+1),
-				zap.Int("total_symbols", len(symbols)),
-				zap.Error(err))
-			continue
-		}
-
-		successCount++
-		// 调用回调函数处理数据
-		for _, kline := range klines {
-			if err := s.callback(&kline); err != nil {
-				s.logger.Error("处理kline数据失败",
-					zap.String("symbol", string(kline.Symbol)),
-					zap.String("interval", kline.Interval),
+	// 为每个symbol和interval组合获取klines数据
+	for _, symbol := range symbols {
+		for _, interval := range intervals {
+			klines, err := exchange.GetKlines(ctx, symbol, interval, 100) // 默认获取100条
+			if err != nil {
+				s.logger.Error("获取klines数据失败",
+					zap.String("symbol", string(symbol)),
+					zap.String("interval", interval),
 					zap.Error(err))
+				continue
+			}
+
+			// 调用回调函数处理数据
+			for _, kline := range klines {
+				if err := s.callback(&kline); err != nil {
+					s.logger.Error("处理kline数据失败",
+						zap.String("symbol", string(kline.Symbol)),
+						zap.String("interval", kline.Interval),
+						zap.Error(err))
+				}
 			}
 		}
 	}
-
-	s.logger.Debug("批次K线处理完成",
-		zap.String("interval", interval),
-		zap.Int("total", len(symbols)),
-		zap.Int("success", successCount),
-		zap.Int("errors", errorCount))
-
 	return nil
 }
 
@@ -377,16 +317,6 @@ func (s *Scheduler) GetJobStatus() map[string]*JobInfo {
 	return result
 }
 
-// GetRateLimitStatus 获取频控状态
-func (s *Scheduler) GetRateLimitStatus() map[string]interface{} {
-	if s.rateLimitMgr == nil {
-		return map[string]interface{}{
-			"error": "rate limit manager not initialized",
-		}
-	}
-	return s.rateLimitMgr.GetStatus()
-}
-
 // getSymbolsForExchange 从配置中获取交易对列表
 func (s *Scheduler) getSymbolsForExchange(exchangeName string, dataType types.DataType) []types.Symbol {
 	if s.config == nil {
@@ -424,8 +354,6 @@ func (s *Scheduler) getBinanceSymbols(dataType types.DataType) []types.Symbol {
 
 	// 如果配置中包含"*"，则从cache中获取所有可用交易对
 	if len(configSymbols) == 1 && configSymbols[0] == "*" {
-		s.logger.Debug("从cache获取所有交易对",
-			zap.String("dataType", string(dataType)))
 		return s.getTradablePairsFromCache(dataType)
 	}
 
@@ -438,20 +366,13 @@ func (s *Scheduler) getBinanceSymbols(dataType types.DataType) []types.Symbol {
 	s.logger.Debug("从配置获取交易对",
 		zap.String("dataType", string(dataType)),
 		zap.Strings("symbols", configSymbols),
-		zap.Int("count", len(symbols)),
-		zap.Bool("fetch_from_api", s.config.Exchanges.Binance.TradablePairs.FetchFromAPI))
+		zap.Int("count", len(symbols)))
 
 	return symbols
 }
 
 // getTradablePairsFromCache 从cache中获取可交易的交易对
 func (s *Scheduler) getTradablePairsFromCache(dataType types.DataType) []types.Symbol {
-	// 检查配置中的fetch_from_api开关
-	if s.config == nil || !s.config.Exchanges.Binance.TradablePairs.FetchFromAPI {
-		s.logger.Warn("fetch_from_api配置未启用，跳过从缓存获取交易对",
-			zap.String("dataType", string(dataType)))
-		return []types.Symbol{}
-	}
 	// 获取Binance交易所实例
 	binanceExchange, exists := s.exchanges["binance"]
 	if !exists {
@@ -486,8 +407,7 @@ func (s *Scheduler) getTradablePairsFromCache(dataType types.DataType) []types.S
 
 	s.logger.Info("从cache获取交易对成功",
 		zap.String("dataType", string(dataType)),
-		zap.Int("count", len(symbols)),
-		zap.Bool("fetch_from_api", s.config.Exchanges.Binance.TradablePairs.FetchFromAPI))
+		zap.Int("count", len(symbols)))
 
 	return symbols
 }
@@ -521,26 +441,5 @@ func (s *Scheduler) getIntervalsForExchange(exchangeName string) []string {
 		return intervals
 	default:
 		return []string{"1m", "5m", "1h"} // 默认间隔
-	}
-}
-
-// getTimeoutForDataType 根据数据类型获取超时时间
-func (s *Scheduler) getTimeoutForDataType(dataType string) time.Duration {
-	switch types.DataType(dataType) {
-	case types.DataTypeKlines:
-		// K线数据需要更长时间，因为可能有多个间隔和大量交易对
-		return 5 * time.Minute
-	case types.DataTypeTicker:
-		// Ticker数据相对简单
-		return 2 * time.Minute
-	case types.DataTypeOrderbook:
-		// Orderbook数据中等复杂度
-		return 3 * time.Minute
-	case types.DataTypeTrades:
-		// Trades数据中等复杂度
-		return 3 * time.Minute
-	default:
-		// 默认超时时间
-		return 2 * time.Minute
 	}
 }

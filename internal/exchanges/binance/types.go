@@ -25,16 +25,16 @@ const (
 type filterType string
 
 const (
-	priceFilter              filterType = "PRICE_FILTER"              // 价格过滤器
-	lotSizeFilter            filterType = "LOT_SIZE"                  // 数量过滤器
-	icebergPartsFilter       filterType = "ICEBERG_PARTS"            // 冰山订单过滤器
-	marketLotSizeFilter      filterType = "MARKET_LOT_SIZE"          // 市价单数量过滤器
-	trailingDeltaFilter      filterType = "TRAILING_DELTA"           // 跟踪止损过滤器
-	percentPriceFilter       filterType = "PERCENT_PRICE"            // 百分比价格过滤器
-	percentPriceBySizeFilter filterType = "PERCENT_PRICE_BY_SIDE"    // 按边百分比价格过滤器
-	notionalFilter           filterType = "NOTIONAL"                 // 名义价值过滤器
-	maxNumOrdersFilter       filterType = "MAX_NUM_ORDERS"           // 最大订单数过滤器
-	maxNumAlgoOrdersFilter   filterType = "MAX_NUM_ALGO_ORDERS"      // 最大算法订单数过滤器
+	priceFilter              filterType = "PRICE_FILTER"          // 价格过滤器
+	lotSizeFilter            filterType = "LOT_SIZE"              // 数量过滤器
+	icebergPartsFilter       filterType = "ICEBERG_PARTS"         // 冰山订单过滤器
+	marketLotSizeFilter      filterType = "MARKET_LOT_SIZE"       // 市价单数量过滤器
+	trailingDeltaFilter      filterType = "TRAILING_DELTA"        // 跟踪止损过滤器
+	percentPriceFilter       filterType = "PERCENT_PRICE"         // 百分比价格过滤器
+	percentPriceBySizeFilter filterType = "PERCENT_PRICE_BY_SIDE" // 按边百分比价格过滤器
+	notionalFilter           filterType = "NOTIONAL"              // 名义价值过滤器
+	maxNumOrdersFilter       filterType = "MAX_NUM_ORDERS"        // 最大订单数过滤器
+	maxNumAlgoOrdersFilter   filterType = "MAX_NUM_ALGO_ORDERS"   // 最大算法订单数过滤器
 )
 
 // ExchangeInfo 交易所完整信息类型
@@ -70,22 +70,22 @@ type ExchangeInfo struct {
 
 // filterData 过滤器数据
 type filterData struct {
-	FilterType          filterType `json:"filterType"`          // 过滤器类型
-	MinPrice            float64    `json:"minPrice,string"`     // 最小价格
-	MaxPrice            float64    `json:"maxPrice,string"`     // 最大价格
-	TickSize            float64    `json:"tickSize,string"`     // 价格步长
-	MultiplierUp        float64    `json:"multiplierUp,string"` // 上涨乘数
+	FilterType          filterType `json:"filterType"`            // 过滤器类型
+	MinPrice            float64    `json:"minPrice,string"`       // 最小价格
+	MaxPrice            float64    `json:"maxPrice,string"`       // 最大价格
+	TickSize            float64    `json:"tickSize,string"`       // 价格步长
+	MultiplierUp        float64    `json:"multiplierUp,string"`   // 上涨乘数
 	MultiplierDown      float64    `json:"multiplierDown,string"` // 下跌乘数
-	AvgPriceMinutes     int64      `json:"avgPriceMins"`        // 平均价格分钟数
-	MinQty              float64    `json:"minQty,string"`       // 最小数量
-	MaxQty              float64    `json:"maxQty,string"`       // 最大数量
-	StepSize            float64    `json:"stepSize,string"`     // 数量步长
-	MinNotional         float64    `json:"minNotional,string"`  // 最小名义价值
-	ApplyToMarket       bool       `json:"applyToMarket"`       // 是否应用于市价单
-	Limit               int64      `json:"limit"`               // 限制
-	MaxNumAlgoOrders    int64      `json:"maxNumAlgoOrders"`    // 最大算法订单数
-	MaxNumIcebergOrders int64      `json:"maxNumIcebergOrders"` // 最大冰山订单数
-	MaxNumOrders        int64      `json:"maxNumOrders"`        // 最大订单数
+	AvgPriceMinutes     int64      `json:"avgPriceMins"`          // 平均价格分钟数
+	MinQty              float64    `json:"minQty,string"`         // 最小数量
+	MaxQty              float64    `json:"maxQty,string"`         // 最大数量
+	StepSize            float64    `json:"stepSize,string"`       // 数量步长
+	MinNotional         float64    `json:"minNotional,string"`    // 最小名义价值
+	ApplyToMarket       bool       `json:"applyToMarket"`         // 是否应用于市价单
+	Limit               int64      `json:"limit"`                 // 限制
+	MaxNumAlgoOrders    int64      `json:"maxNumAlgoOrders"`      // 最大算法订单数
+	MaxNumIcebergOrders int64      `json:"maxNumIcebergOrders"`   // 最大冰山订单数
+	MaxNumOrders        int64      `json:"maxNumOrders"`          // 最大订单数
 }
 
 // CoinInfo 存储所有支持币种的信息
@@ -101,23 +101,23 @@ type CoinInfo struct {
 	Locked            float64 `json:"locked,string"`     // 锁定余额
 	Name              string  `json:"name"`              // 币种名称
 	NetworkList       []struct {
-		AddressRegex        string  `json:"addressRegex"`        // 地址正则
-		Coin                string  `json:"coin"`                // 币种
-		DepositDescription  string  `json:"depositDesc"`         // 充值描述（仅在"depositEnable"为false时显示）
-		DepositEnable       bool    `json:"depositEnable"`       // 是否启用充值
-		IsDefault           bool    `json:"isDefault"`           // 是否默认
-		MemoRegex           string  `json:"memoRegex"`           // 备注正则
-		MinimumConfirmation uint16  `json:"minConfirm"`          // 最小确认数
-		Name                string  `json:"name"`                // 网络名称
-		Network             string  `json:"network"`             // 网络
-		ResetAddressStatus  bool    `json:"resetAddressStatus"`  // 重置地址状态
-		SpecialTips         string  `json:"specialTips"`         // 特殊提示
-		UnlockConfirm       uint16  `json:"unLockConfirm"`       // 解锁确认数
-		WithdrawDescription string  `json:"withdrawDesc"`        // 提现描述（仅在"withdrawEnable"为false时显示）
-		WithdrawEnable      bool    `json:"withdrawEnable"`      // 是否启用提现
-		WithdrawFee         float64 `json:"withdrawFee,string"`  // 提现手续费
-		WithdrawMinimum     float64 `json:"withdrawMin,string"`  // 最小提现金额
-		WithdrawMaximum     float64 `json:"withdrawMax,string"`  // 最大提现金额
+		AddressRegex        string  `json:"addressRegex"`       // 地址正则
+		Coin                string  `json:"coin"`               // 币种
+		DepositDescription  string  `json:"depositDesc"`        // 充值描述（仅在"depositEnable"为false时显示）
+		DepositEnable       bool    `json:"depositEnable"`      // 是否启用充值
+		IsDefault           bool    `json:"isDefault"`          // 是否默认
+		MemoRegex           string  `json:"memoRegex"`          // 备注正则
+		MinimumConfirmation uint16  `json:"minConfirm"`         // 最小确认数
+		Name                string  `json:"name"`               // 网络名称
+		Network             string  `json:"network"`            // 网络
+		ResetAddressStatus  bool    `json:"resetAddressStatus"` // 重置地址状态
+		SpecialTips         string  `json:"specialTips"`        // 特殊提示
+		UnlockConfirm       uint16  `json:"unLockConfirm"`      // 解锁确认数
+		WithdrawDescription string  `json:"withdrawDesc"`       // 提现描述（仅在"withdrawEnable"为false时显示）
+		WithdrawEnable      bool    `json:"withdrawEnable"`     // 是否启用提现
+		WithdrawFee         float64 `json:"withdrawFee,string"` // 提现手续费
+		WithdrawMinimum     float64 `json:"withdrawMin,string"` // 最小提现金额
+		WithdrawMaximum     float64 `json:"withdrawMax,string"` // 最大提现金额
 	} `json:"networkList"` // 网络列表
 	Storage     float64 `json:"storage,string"`     // 存储
 	Trading     bool    `json:"trading"`            // 是否可交易
@@ -261,13 +261,13 @@ type TickerStream struct {
 
 // HistoricalTrade 保存历史交易数据
 type HistoricalTrade struct {
-	ID            int64      `json:"id"`            // 交易ID
-	Price         float64    `json:"price,string"`  // 价格
-	Quantity      float64    `json:"qty,string"`    // 数量
+	ID            int64      `json:"id"`              // 交易ID
+	Price         float64    `json:"price,string"`    // 价格
+	Quantity      float64    `json:"qty,string"`      // 数量
 	QuoteQuantity float64    `json:"quoteQty,string"` // 计价数量
-	Time          types.Time `json:"time"`          // 时间
-	IsBuyerMaker  bool       `json:"isBuyerMaker"`  // 是否买方挂单
-	IsBestMatch   bool       `json:"isBestMatch"`   // 是否最佳匹配
+	Time          types.Time `json:"time"`            // 时间
+	IsBuyerMaker  bool       `json:"isBuyerMaker"`    // 是否买方挂单
+	IsBestMatch   bool       `json:"isBestMatch"`     // 是否最佳匹配
 }
 
 // AggregatedTradeRequestParams 保存聚合交易请求参数
@@ -284,14 +284,14 @@ type AggregatedTradeRequestParams struct {
 
 // AggregatedTrade 保存聚合交易信息
 type AggregatedTrade struct {
-	ATradeID       int64      `json:"a"` // 聚合交易ID
+	ATradeID       int64      `json:"a"`        // 聚合交易ID
 	Price          float64    `json:"p,string"` // 价格
 	Quantity       float64    `json:"q,string"` // 数量
-	FirstTradeID   int64      `json:"f"` // 第一个交易ID
-	LastTradeID    int64      `json:"l"` // 最后交易ID
-	TimeStamp      types.Time `json:"T"` // 时间戳
-	IsBuyerMaker   bool       `json:"m"` // 是否买方挂单
-	BestMatchPrice bool       `json:"M"` // 最佳匹配价格
+	FirstTradeID   int64      `json:"f"`        // 第一个交易ID
+	LastTradeID    int64      `json:"l"`        // 最后交易ID
+	TimeStamp      types.Time `json:"T"`        // 时间戳
+	IsBuyerMaker   bool       `json:"m"`        // 是否买方挂单
+	BestMatchPrice bool       `json:"M"`        // 最佳匹配价格
 }
 
 // IndexMarkPrice 存储指数和标记价格数据
@@ -377,7 +377,7 @@ type SymbolPrice struct {
 
 // BestPrice 保存最佳价格数据
 type BestPrice struct {
-	Symbol   string  `json:"symbol"`         // 交易对
+	Symbol   string  `json:"symbol"`          // 交易对
 	BidPrice float64 `json:"bidPrice,string"` // 买价
 	BidQty   float64 `json:"bidQty,string"`   // 买量
 	AskPrice float64 `json:"askPrice,string"` // 卖价
@@ -408,21 +408,21 @@ type NewOrderRequest struct {
 
 // NewOrderResponse 交易所返回的结构化响应
 type NewOrderResponse struct {
-	Code            int        `json:"code"`            // 状态码
-	Msg             string     `json:"msg"`             // 消息
-	Symbol          string     `json:"symbol"`          // 交易对
-	OrderID         int64      `json:"orderId"`         // 订单ID
-	ClientOrderID   string     `json:"clientOrderId"`   // 客户端订单ID
-	TransactionTime types.Time `json:"transactTime"`    // 交易时间
-	Price           float64    `json:"price,string"`    // 价格
-	OrigQty         float64    `json:"origQty,string"`  // 原始数量
+	Code            int        `json:"code"`               // 状态码
+	Msg             string     `json:"msg"`                // 消息
+	Symbol          string     `json:"symbol"`             // 交易对
+	OrderID         int64      `json:"orderId"`            // 订单ID
+	ClientOrderID   string     `json:"clientOrderId"`      // 客户端订单ID
+	TransactionTime types.Time `json:"transactTime"`       // 交易时间
+	Price           float64    `json:"price,string"`       // 价格
+	OrigQty         float64    `json:"origQty,string"`     // 原始数量
 	ExecutedQty     float64    `json:"executedQty,string"` // 已执行数量
 	// 已花费（买单）或已收到（卖单）的计价资产累计金额
 	CumulativeQuoteQty float64 `json:"cummulativeQuoteQty,string"` // 累计计价数量
-	Status             string  `json:"status"`      // 状态
-	TimeInForce        string  `json:"timeInForce"` // 有效时间
-	Type               string  `json:"type"`        // 类型
-	Side               string  `json:"side"`        // 买卖方向
+	Status             string  `json:"status"`                     // 状态
+	TimeInForce        string  `json:"timeInForce"`                // 有效时间
+	Type               string  `json:"type"`                       // 类型
+	Side               string  `json:"side"`                       // 买卖方向
 	Fills              []struct {
 		Price           float64 `json:"price,string"`      // 价格
 		Qty             float64 `json:"qty,string"`        // 数量
@@ -441,26 +441,26 @@ type CancelOrderResponse struct {
 
 // QueryOrderData 保存查询订单数据
 type QueryOrderData struct {
-	Code                int        `json:"code"`                // 状态码
-	Msg                 string     `json:"msg"`                 // 消息
-	Symbol              string     `json:"symbol"`              // 交易对
-	OrderID             int64      `json:"orderId"`             // 订单ID
-	ClientOrderID       string     `json:"clientOrderId"`       // 客户端订单ID
-	Price               float64    `json:"price,string"`        // 价格
-	OrigQty             float64    `json:"origQty,string"`      // 原始数量
-	ExecutedQty         float64    `json:"executedQty,string"`  // 已执行数量
-	Status              string     `json:"status"`              // 状态
-	TimeInForce         string     `json:"timeInForce"`         // 有效时间
-	Type                string     `json:"type"`                // 类型
-	Side                string     `json:"side"`                // 买卖方向
-	StopPrice           float64    `json:"stopPrice,string"`    // 止损价格
-	IcebergQty          float64    `json:"icebergQty,string"`   // 冰山数量
-	Time                types.Time `json:"time"`                // 时间
-	IsWorking           bool       `json:"isWorking"`           // 是否工作中
+	Code                int        `json:"code"`                       // 状态码
+	Msg                 string     `json:"msg"`                        // 消息
+	Symbol              string     `json:"symbol"`                     // 交易对
+	OrderID             int64      `json:"orderId"`                    // 订单ID
+	ClientOrderID       string     `json:"clientOrderId"`              // 客户端订单ID
+	Price               float64    `json:"price,string"`               // 价格
+	OrigQty             float64    `json:"origQty,string"`             // 原始数量
+	ExecutedQty         float64    `json:"executedQty,string"`         // 已执行数量
+	Status              string     `json:"status"`                     // 状态
+	TimeInForce         string     `json:"timeInForce"`                // 有效时间
+	Type                string     `json:"type"`                       // 类型
+	Side                string     `json:"side"`                       // 买卖方向
+	StopPrice           float64    `json:"stopPrice,string"`           // 止损价格
+	IcebergQty          float64    `json:"icebergQty,string"`          // 冰山数量
+	Time                types.Time `json:"time"`                       // 时间
+	IsWorking           bool       `json:"isWorking"`                  // 是否工作中
 	CummulativeQuoteQty float64    `json:"cummulativeQuoteQty,string"` // 累计计价数量
-	OrderListID         int64      `json:"orderListId"`         // 订单列表ID
-	OrigQuoteOrderQty   float64    `json:"origQuoteOrderQty,string"` // 原始计价订单数量
-	UpdateTime          types.Time `json:"updateTime"`          // 更新时间
+	OrderListID         int64      `json:"orderListId"`                // 订单列表ID
+	OrigQuoteOrderQty   float64    `json:"origQuoteOrderQty,string"`   // 原始计价订单数量
+	UpdateTime          types.Time `json:"updateTime"`                 // 更新时间
 }
 
 // Balance 保存余额数据
@@ -485,14 +485,14 @@ type Account struct {
 
 // MarginAccount 保存保证金账户数据
 type MarginAccount struct {
-	BorrowEnabled       bool                 `json:"borrowEnabled"`       // 借贷启用
-	MarginLevel         float64              `json:"marginLevel,string"`  // 保证金水平
-	TotalAssetOfBtc     float64              `json:"totalAssetOfBtc,string"` // BTC总资产
+	BorrowEnabled       bool                 `json:"borrowEnabled"`              // 借贷启用
+	MarginLevel         float64              `json:"marginLevel,string"`         // 保证金水平
+	TotalAssetOfBtc     float64              `json:"totalAssetOfBtc,string"`     // BTC总资产
 	TotalLiabilityOfBtc float64              `json:"totalLiabilityOfBtc,string"` // BTC总负债
-	TotalNetAssetOfBtc  float64              `json:"totalNetAssetOfBtc,string"` // BTC净资产总额
-	TradeEnabled        bool                 `json:"tradeEnabled"`        // 交易启用
-	TransferEnabled     bool                 `json:"transferEnabled"`     // 转账启用
-	UserAssets          []MarginAccountAsset `json:"userAssets"`          // 用户资产
+	TotalNetAssetOfBtc  float64              `json:"totalNetAssetOfBtc,string"`  // BTC净资产总额
+	TradeEnabled        bool                 `json:"tradeEnabled"`               // 交易启用
+	TransferEnabled     bool                 `json:"transferEnabled"`            // 转账启用
+	UserAssets          []MarginAccountAsset `json:"userAssets"`                 // 用户资产
 }
 
 // MarginAccountAsset 保存每个单独的保证金账户资产
@@ -542,16 +542,16 @@ type KlinesRequestParams struct {
 
 // DepositHistory 存储充值历史信息
 type DepositHistory struct {
-	Amount        float64    `json:"amount,string"`    // 金额
-	Coin          string     `json:"coin"`             // 币种
-	Network       string     `json:"network"`          // 网络
-	Status        uint8      `json:"status"`           // 状态
-	Address       string     `json:"address"`          // 地址
-	AddressTag    string     `json:"adressTag"`        // 地址标签
-	TransactionID string     `json:"txId"`             // 交易ID
-	InsertTime    types.Time `json:"insertTime"`       // 插入时间
-	TransferType  uint8      `json:"transferType"`     // 转账类型
-	ConfirmTimes  string     `json:"confirmTimes"`     // 确认次数
+	Amount        float64    `json:"amount,string"` // 金额
+	Coin          string     `json:"coin"`          // 币种
+	Network       string     `json:"network"`       // 网络
+	Status        uint8      `json:"status"`        // 状态
+	Address       string     `json:"address"`       // 地址
+	AddressTag    string     `json:"adressTag"`     // 地址标签
+	TransactionID string     `json:"txId"`          // 交易ID
+	InsertTime    types.Time `json:"insertTime"`    // 插入时间
+	TransferType  uint8      `json:"transferType"`  // 转账类型
+	ConfirmTimes  string     `json:"confirmTimes"`  // 确认次数
 }
 
 // WithdrawResponse 包含提现请求状态
@@ -561,18 +561,18 @@ type WithdrawResponse struct {
 
 // WithdrawStatusResponse 定义提现状态响应
 type WithdrawStatusResponse struct {
-	Address         string     `json:"address"`          // 地址
-	Amount          float64    `json:"amount,string"`    // 金额
-	ApplyTime       types.Time `json:"applyTime"`        // 申请时间
-	Coin            string     `json:"coin"`             // 币种
-	ID              string     `json:"id"`               // ID
-	WithdrawOrderID string     `json:"withdrawOrderId"`  // 提现订单ID
-	Network         string     `json:"network"`          // 网络
-	TransferType    uint8      `json:"transferType"`     // 转账类型
-	Status          int64      `json:"status"`           // 状态
+	Address         string     `json:"address"`               // 地址
+	Amount          float64    `json:"amount,string"`         // 金额
+	ApplyTime       types.Time `json:"applyTime"`             // 申请时间
+	Coin            string     `json:"coin"`                  // 币种
+	ID              string     `json:"id"`                    // ID
+	WithdrawOrderID string     `json:"withdrawOrderId"`       // 提现订单ID
+	Network         string     `json:"network"`               // 网络
+	TransferType    uint8      `json:"transferType"`          // 转账类型
+	Status          int64      `json:"status"`                // 状态
 	TransactionFee  float64    `json:"transactionFee,string"` // 交易手续费
-	TransactionID   string     `json:"txId"`             // 交易ID
-	ConfirmNumber   int64      `json:"confirmNo"`        // 确认数量
+	TransactionID   string     `json:"txId"`                  // 交易ID
+	ConfirmNumber   int64      `json:"confirmNo"`             // 确认数量
 }
 
 // DepositAddress 存储充值地址信息
@@ -613,7 +613,7 @@ type WsAccountPositionData struct {
 		Asset     string  `json:"a"`        // 资产
 		Available float64 `json:"f,string"` // 可用
 		Locked    float64 `json:"l,string"` // 锁定
-	} `json:"B"`                   // 货币列表
+	} `json:"B"` // 货币列表
 	EventTime   types.Time `json:"E"` // 事件时间
 	LastUpdated types.Time `json:"u"` // 最后更新
 	EventType   string     `json:"e"` // 事件类型
@@ -630,36 +630,36 @@ type WsBalanceUpdateData struct {
 
 // WsOrderUpdateData 定义WebSocket账户订单更新数据
 type WsOrderUpdateData struct {
-	EventType                         string     `json:"e"` // 事件类型
-	EventTime                         types.Time `json:"E"` // 事件时间
-	Symbol                            string     `json:"s"` // 交易对
-	ClientOrderID                     string     `json:"c"` // 客户端订单ID
-	Side                              string     `json:"S"` // 买卖方向
-	OrderType                         string     `json:"o"` // 订单类型
-	TimeInForce                       string     `json:"f"` // 有效时间
+	EventType                         string     `json:"e"`        // 事件类型
+	EventTime                         types.Time `json:"E"`        // 事件时间
+	Symbol                            string     `json:"s"`        // 交易对
+	ClientOrderID                     string     `json:"c"`        // 客户端订单ID
+	Side                              string     `json:"S"`        // 买卖方向
+	OrderType                         string     `json:"o"`        // 订单类型
+	TimeInForce                       string     `json:"f"`        // 有效时间
 	Quantity                          float64    `json:"q,string"` // 数量
 	Price                             float64    `json:"p,string"` // 价格
 	StopPrice                         float64    `json:"P,string"` // 止损价格
 	IcebergQuantity                   float64    `json:"F,string"` // 冰山数量
-	OrderListID                       int64      `json:"g"` // 订单列表ID
-	CancelledClientOrderID            string     `json:"C"` // 取消的客户端订单ID
-	CurrentExecutionType              string     `json:"x"` // 当前执行类型
-	OrderStatus                       string     `json:"X"` // 订单状态
-	RejectionReason                   string     `json:"r"` // 拒绝原因
-	OrderID                           int64      `json:"i"` // 订单ID
+	OrderListID                       int64      `json:"g"`        // 订单列表ID
+	CancelledClientOrderID            string     `json:"C"`        // 取消的客户端订单ID
+	CurrentExecutionType              string     `json:"x"`        // 当前执行类型
+	OrderStatus                       string     `json:"X"`        // 订单状态
+	RejectionReason                   string     `json:"r"`        // 拒绝原因
+	OrderID                           int64      `json:"i"`        // 订单ID
 	LastExecutedQuantity              float64    `json:"l,string"` // 最后执行数量
 	CumulativeFilledQuantity          float64    `json:"z,string"` // 累计成交数量
 	LastExecutedPrice                 float64    `json:"L,string"` // 最后执行价格
 	Commission                        float64    `json:"n,string"` // 手续费
-	CommissionAsset                   string     `json:"N"` // 手续费资产
-	TransactionTime                   types.Time `json:"T"` // 交易时间
-	TradeID                           int64      `json:"t"` // 交易ID
-	Ignored                           int64      `json:"I"` // 必须明确忽略，否则会覆盖'i'
-	IsOnOrderBook                     bool       `json:"w"` // 是否在订单簿上
-	IsMaker                           bool       `json:"m"` // 是否挂单方
-	Ignored2                          bool       `json:"M"` // 参见"I"的注释
-	OrderCreationTime                 types.Time `json:"O"` // 订单创建时间
-	WorkingTime                       types.Time `json:"W"` // 工作时间
+	CommissionAsset                   string     `json:"N"`        // 手续费资产
+	TransactionTime                   types.Time `json:"T"`        // 交易时间
+	TradeID                           int64      `json:"t"`        // 交易ID
+	Ignored                           int64      `json:"I"`        // 必须明确忽略，否则会覆盖'i'
+	IsOnOrderBook                     bool       `json:"w"`        // 是否在订单簿上
+	IsMaker                           bool       `json:"m"`        // 是否挂单方
+	Ignored2                          bool       `json:"M"`        // 参见"I"的注释
+	OrderCreationTime                 types.Time `json:"O"`        // 订单创建时间
+	WorkingTime                       types.Time `json:"W"`        // 工作时间
 	CumulativeQuoteTransactedQuantity float64    `json:"Z,string"` // 累计计价成交数量
 	LastQuoteAssetTransactedQuantity  float64    `json:"Y,string"` // 最后计价资产成交数量
 	QuoteOrderQuantity                float64    `json:"Q,string"` // 计价订单数量
@@ -693,9 +693,9 @@ type WsPayload struct {
 
 // CrossMarginInterestData 存储借贷的全仓保证金数据
 type CrossMarginInterestData struct {
-	Code          int64  `json:"code,string"`    // 状态码
-	Message       string `json:"message"`        // 消息
-	MessageDetail string `json:"messageDetail"`  // 消息详情
+	Code          int64  `json:"code,string"`   // 状态码
+	Message       string `json:"message"`       // 消息
+	MessageDetail string `json:"messageDetail"` // 消息详情
 	Data          []struct {
 		AssetName string `json:"assetName"` // 资产名称
 		Specs     []struct {
@@ -703,7 +703,7 @@ type CrossMarginInterestData struct {
 			DailyInterestRate string `json:"dailyInterestRate"` // 日利率
 			BorrowLimit       string `json:"borrowLimit"`       // 借贷限额
 		} `json:"specs"` // 规格
-	} `json:"data"`    // 数据
+	} `json:"data"` // 数据
 	Success bool `json:"success"` // 成功标志
 }
 
@@ -728,33 +728,33 @@ type UserMarginInterestHistory struct {
 
 // CryptoLoansIncomeHistory 存储加密货币借贷收入历史数据
 type CryptoLoansIncomeHistory struct {
-	Asset         currency.Code `json:"asset"`  // 资产
-	Type          string        `json:"type"`   // 类型
+	Asset         currency.Code `json:"asset"`         // 资产
+	Type          string        `json:"type"`          // 类型
 	Amount        float64       `json:"amount,string"` // 金额
-	TransactionID int64         `json:"tranId"` // 交易ID
+	TransactionID int64         `json:"tranId"`        // 交易ID
 }
 
 // CryptoLoanBorrow 存储加密货币借贷数据
 type CryptoLoanBorrow struct {
-	LoanCoin           currency.Code `json:"loanCoin"`           // 借贷币种
-	Amount             float64       `json:"amount,string"`      // 金额
-	CollateralCoin     currency.Code `json:"collateralCoin"`     // 抵押币种
-	CollateralAmount   float64       `json:"collateralAmount,string"` // 抵押金额
+	LoanCoin           currency.Code `json:"loanCoin"`                  // 借贷币种
+	Amount             float64       `json:"amount,string"`             // 金额
+	CollateralCoin     currency.Code `json:"collateralCoin"`            // 抵押币种
+	CollateralAmount   float64       `json:"collateralAmount,string"`   // 抵押金额
 	HourlyInterestRate float64       `json:"hourlyInterestRate,string"` // 小时利率
-	OrderID            int64         `json:"orderId,string"`     // 订单ID
+	OrderID            int64         `json:"orderId,string"`            // 订单ID
 }
 
 // LoanBorrowHistoryItem 存储借贷历史项目数据
 type LoanBorrowHistoryItem struct {
-	OrderID                 int64         `json:"orderId"`                 // 订单ID
-	LoanCoin                currency.Code `json:"loanCoin"`                // 借贷币种
-	InitialLoanAmount       float64       `json:"initialLoanAmount,string"` // 初始借贷金额
-	HourlyInterestRate      float64       `json:"hourlyInterestRate,string"` // 小时利率
-	LoanTerm                int64         `json:"loanTerm,string"`         // 借贷期限
-	CollateralCoin          currency.Code `json:"collateralCoin"`          // 抵押币种
+	OrderID                 int64         `json:"orderId"`                        // 订单ID
+	LoanCoin                currency.Code `json:"loanCoin"`                       // 借贷币种
+	InitialLoanAmount       float64       `json:"initialLoanAmount,string"`       // 初始借贷金额
+	HourlyInterestRate      float64       `json:"hourlyInterestRate,string"`      // 小时利率
+	LoanTerm                int64         `json:"loanTerm,string"`                // 借贷期限
+	CollateralCoin          currency.Code `json:"collateralCoin"`                 // 抵押币种
 	InitialCollateralAmount float64       `json:"initialCollateralAmount,string"` // 初始抵押金额
-	BorrowTime              types.Time    `json:"borrowTime"`              // 借贷时间
-	Status                  string        `json:"status"`                  // 状态
+	BorrowTime              types.Time    `json:"borrowTime"`                     // 借贷时间
+	Status                  string        `json:"status"`                         // 状态
 }
 
 // LoanBorrowHistory 存储借贷历史数据
@@ -765,14 +765,14 @@ type LoanBorrowHistory struct {
 
 // CryptoLoanOngoingOrderItem 存储加密货币借贷进行中订单项目数据
 type CryptoLoanOngoingOrderItem struct {
-	OrderID          int64         `json:"orderId"`          // 订单ID
-	LoanCoin         currency.Code `json:"loanCoin"`         // 借贷币种
-	TotalDebt        float64       `json:"totalDebt,string"` // 总债务
+	OrderID          int64         `json:"orderId"`                 // 订单ID
+	LoanCoin         currency.Code `json:"loanCoin"`                // 借贷币种
+	TotalDebt        float64       `json:"totalDebt,string"`        // 总债务
 	ResidualInterest float64       `json:"residualInterest,string"` // 剩余利息
-	CollateralCoin   currency.Code `json:"collateralCoin"`   // 抵押币种
+	CollateralCoin   currency.Code `json:"collateralCoin"`          // 抵押币种
 	CollateralAmount float64       `json:"collateralAmount,string"` // 抵押金额
-	CurrentLTV       float64       `json:"currentLTV,string"` // 当前LTV
-	ExpirationTime   types.Time    `json:"expirationTime"`   // 到期时间
+	CurrentLTV       float64       `json:"currentLTV,string"`       // 当前LTV
+	ExpirationTime   types.Time    `json:"expirationTime"`          // 到期时间
 }
 
 // CryptoLoanOngoingOrder 存储加密货币借贷进行中订单数据
@@ -783,25 +783,25 @@ type CryptoLoanOngoingOrder struct {
 
 // CryptoLoanRepay 存储加密货币借贷还款数据
 type CryptoLoanRepay struct {
-	LoanCoin            currency.Code `json:"loanCoin"`            // 借贷币种
-	RemainingPrincipal  float64       `json:"remainingPrincipal,string"` // 剩余本金
-	RemainingInterest   float64       `json:"remainingInterest,string"` // 剩余利息
-	CollateralCoin      currency.Code `json:"collateralCoin"`      // 抵押币种
+	LoanCoin            currency.Code `json:"loanCoin"`                   // 借贷币种
+	RemainingPrincipal  float64       `json:"remainingPrincipal,string"`  // 剩余本金
+	RemainingInterest   float64       `json:"remainingInterest,string"`   // 剩余利息
+	CollateralCoin      currency.Code `json:"collateralCoin"`             // 抵押币种
 	RemainingCollateral float64       `json:"remainingCollateral,string"` // 剩余抵押
-	CurrentLTV          float64       `json:"currentLTV,string"`   // 当前LTV
-	RepayStatus         string        `json:"repayStatus"`         // 还款状态
+	CurrentLTV          float64       `json:"currentLTV,string"`          // 当前LTV
+	RepayStatus         string        `json:"repayStatus"`                // 还款状态
 }
 
 // CryptoLoanRepayHistoryItem 存储加密货币借贷还款历史项目数据
 type CryptoLoanRepayHistoryItem struct {
-	LoanCoin         currency.Code `json:"loanCoin"`         // 借贷币种
-	RepayAmount      float64       `json:"repayAmount,string"` // 还款金额
-	CollateralCoin   currency.Code `json:"collateralCoin"`   // 抵押币种
-	CollateralUsed   float64       `json:"collateralUsed,string"` // 使用的抵押
+	LoanCoin         currency.Code `json:"loanCoin"`                // 借贷币种
+	RepayAmount      float64       `json:"repayAmount,string"`      // 还款金额
+	CollateralCoin   currency.Code `json:"collateralCoin"`          // 抵押币种
+	CollateralUsed   float64       `json:"collateralUsed,string"`   // 使用的抵押
 	CollateralReturn float64       `json:"collateralReturn,string"` // 返还的抵押
-	RepayType        string        `json:"repayType"`        // 还款类型
-	RepayTime        types.Time    `json:"repayTime"`        // 还款时间
-	OrderID          int64         `json:"orderId"`          // 订单ID
+	RepayType        string        `json:"repayType"`               // 还款类型
+	RepayTime        types.Time    `json:"repayTime"`               // 还款时间
+	OrderID          int64         `json:"orderId"`                 // 订单ID
 }
 
 // CryptoLoanRepayHistory 存储加密货币借贷还款历史数据
@@ -812,23 +812,23 @@ type CryptoLoanRepayHistory struct {
 
 // CryptoLoanAdjustLTV 存储加密货币借贷LTV调整数据
 type CryptoLoanAdjustLTV struct {
-	LoanCoin       currency.Code `json:"loanCoin"`       // 借贷币种
-	CollateralCoin currency.Code `json:"collateralCoin"` // 抵押币种
-	Direction      string        `json:"direction"`      // 方向
-	Amount         float64       `json:"amount,string"`  // 金额
+	LoanCoin       currency.Code `json:"loanCoin"`          // 借贷币种
+	CollateralCoin currency.Code `json:"collateralCoin"`    // 抵押币种
+	Direction      string        `json:"direction"`         // 方向
+	Amount         float64       `json:"amount,string"`     // 金额
 	CurrentLTV     float64       `json:"currentLTV,string"` // 当前LTV
 }
 
 // CryptoLoanLTVAdjustmentItem 存储加密货币借贷LTV调整项目数据
 type CryptoLoanLTVAdjustmentItem struct {
-	LoanCoin       currency.Code `json:"loanCoin"`       // 借贷币种
-	CollateralCoin currency.Code `json:"collateralCoin"` // 抵押币种
-	Direction      string        `json:"direction"`      // 方向
-	Amount         float64       `json:"amount,string"`  // 金额
-	PreviousLTV    float64       `json:"preLTV,string"`  // 之前LTV
+	LoanCoin       currency.Code `json:"loanCoin"`        // 借贷币种
+	CollateralCoin currency.Code `json:"collateralCoin"`  // 抵押币种
+	Direction      string        `json:"direction"`       // 方向
+	Amount         float64       `json:"amount,string"`   // 金额
+	PreviousLTV    float64       `json:"preLTV,string"`   // 之前LTV
 	AfterLTV       float64       `json:"afterLTV,string"` // 之后LTV
-	AdjustTime     types.Time    `json:"adjustTime"`     // 调整时间
-	OrderID        int64         `json:"orderId"`        // 订单ID
+	AdjustTime     types.Time    `json:"adjustTime"`      // 调整时间
+	OrderID        int64         `json:"orderId"`         // 订单ID
 }
 
 // CryptoLoanLTVAdjustmentHistory 存储加密货币借贷LTV调整历史数据
@@ -839,20 +839,20 @@ type CryptoLoanLTVAdjustmentHistory struct {
 
 // LoanableAssetItem 存储可借贷资产项目数据
 type LoanableAssetItem struct {
-	LoanCoin                             currency.Code `json:"loanCoin"`                     // 借贷币种
-	SevenDayHourlyInterestRate           float64       `json:"_7dHourlyInterestRate,string"` // 7天小时利率
-	SevenDayDailyInterestRate            float64       `json:"_7dDailyInterestRate,string"`  // 7天日利率
-	FourteenDayHourlyInterest            float64       `json:"_14dHourlyInterestRate,string"` // 14天小时利率
-	FourteenDayDailyInterest             float64       `json:"_14dDailyInterestRate,string"`  // 14天日利率
-	ThirtyDayHourlyInterest              float64       `json:"_30dHourlyInterestRate,string"` // 30天小时利率
-	ThirtyDayDailyInterest               float64       `json:"_30dDailyInterestRate,string"`  // 30天日利率
-	NinetyDayHourlyInterest              float64       `json:"_90dHourlyInterestRate,string"` // 90天小时利率
-	NinetyDayDailyInterest               float64       `json:"_90dDailyInterestRate,string"`  // 90天日利率
+	LoanCoin                             currency.Code `json:"loanCoin"`                       // 借贷币种
+	SevenDayHourlyInterestRate           float64       `json:"_7dHourlyInterestRate,string"`   // 7天小时利率
+	SevenDayDailyInterestRate            float64       `json:"_7dDailyInterestRate,string"`    // 7天日利率
+	FourteenDayHourlyInterest            float64       `json:"_14dHourlyInterestRate,string"`  // 14天小时利率
+	FourteenDayDailyInterest             float64       `json:"_14dDailyInterestRate,string"`   // 14天日利率
+	ThirtyDayHourlyInterest              float64       `json:"_30dHourlyInterestRate,string"`  // 30天小时利率
+	ThirtyDayDailyInterest               float64       `json:"_30dDailyInterestRate,string"`   // 30天日利率
+	NinetyDayHourlyInterest              float64       `json:"_90dHourlyInterestRate,string"`  // 90天小时利率
+	NinetyDayDailyInterest               float64       `json:"_90dDailyInterestRate,string"`   // 90天日利率
 	OneHundredAndEightyDayHourlyInterest float64       `json:"_180dHourlyInterestRate,string"` // 180天小时利率
 	OneHundredAndEightyDayDailyInterest  float64       `json:"_180dDailyInterestRate,string"`  // 180天日利率
-	MinimumLimit                         float64       `json:"minLimit,string"`               // 最小限额
-	MaximumLimit                         float64       `json:"maxLimit,string"`               // 最大限额
-	VIPLevel                             int64         `json:"vipLevel"`                      // VIP等级
+	MinimumLimit                         float64       `json:"minLimit,string"`                // 最小限额
+	MaximumLimit                         float64       `json:"maxLimit,string"`                // 最大限额
+	VIPLevel                             int64         `json:"vipLevel"`                       // VIP等级
 }
 
 // LoanableAssetsData 存储可借贷资产数据
@@ -879,19 +879,19 @@ type CollateralAssetData struct {
 
 // CollateralRepayRate 存储抵押还款利率数据
 type CollateralRepayRate struct {
-	LoanCoin       currency.Code `json:"loanCoin"`       // 借贷币种
-	CollateralCoin currency.Code `json:"collateralCoin"` // 抵押币种
+	LoanCoin       currency.Code `json:"loanCoin"`           // 借贷币种
+	CollateralCoin currency.Code `json:"collateralCoin"`     // 抵押币种
 	RepayAmount    float64       `json:"repayAmount,string"` // 还款金额
-	Rate           float64       `json:"rate,string"`    // 利率
+	Rate           float64       `json:"rate,string"`        // 利率
 }
 
 // CustomiseMarginCallItem 存储自定义保证金追缴项目数据
 type CustomiseMarginCallItem struct {
-	OrderID         int64         `json:"orderId"`         // 订单ID
-	CollateralCoin  currency.Code `json:"collateralCoin"`  // 抵押币种
-	PreMarginCall   float64       `json:"preMarginCall,string"` // 之前保证金追缴
+	OrderID         int64         `json:"orderId"`                // 订单ID
+	CollateralCoin  currency.Code `json:"collateralCoin"`         // 抵押币种
+	PreMarginCall   float64       `json:"preMarginCall,string"`   // 之前保证金追缴
 	AfterMarginCall float64       `json:"afterMarginCall,string"` // 之后保证金追缴
-	CustomiseTime   types.Time    `json:"customizeTime"`   // 自定义时间
+	CustomiseTime   types.Time    `json:"customizeTime"`          // 自定义时间
 }
 
 // CustomiseMarginCall 存储自定义保证金追缴数据
@@ -902,20 +902,20 @@ type CustomiseMarginCall struct {
 
 // FlexibleLoanBorrow 存储灵活借贷
 type FlexibleLoanBorrow struct {
-	LoanCoin         currency.Code `json:"loanCoin"`         // 借贷币种
-	LoanAmount       float64       `json:"loanAmount,string"` // 借贷金额
-	CollateralCoin   currency.Code `json:"collateralCoin"`   // 抵押币种
+	LoanCoin         currency.Code `json:"loanCoin"`                // 借贷币种
+	LoanAmount       float64       `json:"loanAmount,string"`       // 借贷金额
+	CollateralCoin   currency.Code `json:"collateralCoin"`          // 抵押币种
 	CollateralAmount float64       `json:"collateralAmount,string"` // 抵押金额
-	Status           string        `json:"status"`           // 状态
+	Status           string        `json:"status"`                  // 状态
 }
 
 // FlexibleLoanOngoingOrderItem 存储灵活借贷进行中订单项目
 type FlexibleLoanOngoingOrderItem struct {
-	LoanCoin         currency.Code `json:"loanCoin"`         // 借贷币种
-	TotalDebt        float64       `json:"totalDebt,string"` // 总债务
-	CollateralCoin   currency.Code `json:"collateralCoin"`   // 抵押币种
+	LoanCoin         currency.Code `json:"loanCoin"`                // 借贷币种
+	TotalDebt        float64       `json:"totalDebt,string"`        // 总债务
+	CollateralCoin   currency.Code `json:"collateralCoin"`          // 抵押币种
 	CollateralAmount float64       `json:"collateralAmount,string"` // 抵押金额
-	CurrentLTV       float64       `json:"currentLTV,string"` // 当前LTV
+	CurrentLTV       float64       `json:"currentLTV,string"`       // 当前LTV
 }
 
 // FlexibleLoanOngoingOrder 存储灵活借贷进行中订单
@@ -926,12 +926,12 @@ type FlexibleLoanOngoingOrder struct {
 
 // FlexibleLoanBorrowHistoryItem 存储灵活借贷历史项目
 type FlexibleLoanBorrowHistoryItem struct {
-	LoanCoin                currency.Code `json:"loanCoin"`                // 借贷币种
-	InitialLoanAmount       float64       `json:"initialLoanAmount,string"` // 初始借贷金额
-	CollateralCoin          currency.Code `json:"collateralCoin"`          // 抵押币种
+	LoanCoin                currency.Code `json:"loanCoin"`                       // 借贷币种
+	InitialLoanAmount       float64       `json:"initialLoanAmount,string"`       // 初始借贷金额
+	CollateralCoin          currency.Code `json:"collateralCoin"`                 // 抵押币种
 	InitialCollateralAmount float64       `json:"initialCollateralAmount,string"` // 初始抵押金额
-	BorrowTime              types.Time    `json:"borrowTime"`              // 借贷时间
-	Status                  string        `json:"status"`                  // 状态
+	BorrowTime              types.Time    `json:"borrowTime"`                     // 借贷时间
+	Status                  string        `json:"status"`                         // 状态
 }
 
 // FlexibleLoanBorrowHistory 存储灵活借贷历史
@@ -942,23 +942,23 @@ type FlexibleLoanBorrowHistory struct {
 
 // FlexibleLoanRepay 存储灵活借贷还款
 type FlexibleLoanRepay struct {
-	LoanCoin            currency.Code `json:"loanCoin"`            // 借贷币种
-	CollateralCoin      currency.Code `json:"collateralCoin"`      // 抵押币种
-	RemainingDebt       float64       `json:"remainingDebt,string"` // 剩余债务
+	LoanCoin            currency.Code `json:"loanCoin"`                   // 借贷币种
+	CollateralCoin      currency.Code `json:"collateralCoin"`             // 抵押币种
+	RemainingDebt       float64       `json:"remainingDebt,string"`       // 剩余债务
 	RemainingCollateral float64       `json:"remainingCollateral,string"` // 剩余抵押
-	FullRepayment       bool          `json:"fullRepayment"`       // 全额还款
-	CurrentLTV          float64       `json:"currentLTV,string"`   // 当前LTV
-	RepayStatus         string        `json:"repayStatus"`         // 还款状态
+	FullRepayment       bool          `json:"fullRepayment"`              // 全额还款
+	CurrentLTV          float64       `json:"currentLTV,string"`          // 当前LTV
+	RepayStatus         string        `json:"repayStatus"`                // 还款状态
 }
 
 // FlexibleLoanRepayHistoryItem 存储灵活借贷还款历史项目
 type FlexibleLoanRepayHistoryItem struct {
-	LoanCoin         currency.Code `json:"loanCoin"`         // 借贷币种
-	RepayAmount      float64       `json:"repayAmount,string"` // 还款金额
-	CollateralCoin   currency.Code `json:"collateralCoin"`   // 抵押币种
+	LoanCoin         currency.Code `json:"loanCoin"`                // 借贷币种
+	RepayAmount      float64       `json:"repayAmount,string"`      // 还款金额
+	CollateralCoin   currency.Code `json:"collateralCoin"`          // 抵押币种
 	CollateralReturn float64       `json:"collateralReturn,string"` // 抵押返还
-	RepayStatus      string        `json:"repayStatus"`      // 还款状态
-	RepayTime        types.Time    `json:"repayTime"`        // 还款时间
+	RepayStatus      string        `json:"repayStatus"`             // 还款状态
+	RepayTime        types.Time    `json:"repayTime"`               // 还款时间
 }
 
 // FlexibleLoanRepayHistory 存储灵活借贷还款历史
@@ -969,23 +969,23 @@ type FlexibleLoanRepayHistory struct {
 
 // FlexibleLoanAdjustLTV 存储灵活借贷LTV调整
 type FlexibleLoanAdjustLTV struct {
-	LoanCoin       currency.Code `json:"loanCoin"`       // 借贷币种
-	CollateralCoin currency.Code `json:"collateralCoin"` // 抵押币种
-	Direction      string        `json:"direction"`      // 方向
-	Amount         float64       `json:"amount,string"`  // 金额（文档错误：API实际返回"amount"而不是"adjustedAmount"）
+	LoanCoin       currency.Code `json:"loanCoin"`          // 借贷币种
+	CollateralCoin currency.Code `json:"collateralCoin"`    // 抵押币种
+	Direction      string        `json:"direction"`         // 方向
+	Amount         float64       `json:"amount,string"`     // 金额（文档错误：API实际返回"amount"而不是"adjustedAmount"）
 	CurrentLTV     float64       `json:"currentLTV,string"` // 当前LTV
-	Status         string        `json:"status"`         // 状态
+	Status         string        `json:"status"`            // 状态
 }
 
 // FlexibleLoanLTVAdjustmentHistoryItem 存储灵活借贷LTV调整历史项目
 type FlexibleLoanLTVAdjustmentHistoryItem struct {
-	LoanCoin         currency.Code `json:"loanCoin"`         // 借贷币种
-	CollateralCoin   currency.Code `json:"collateralCoin"`   // 抵押币种
-	Direction        string        `json:"direction"`        // 方向
+	LoanCoin         currency.Code `json:"loanCoin"`                // 借贷币种
+	CollateralCoin   currency.Code `json:"collateralCoin"`          // 抵押币种
+	Direction        string        `json:"direction"`               // 方向
 	CollateralAmount float64       `json:"collateralAmount,string"` // 抵押金额
-	PreviousLTV      float64       `json:"preLTV,string"`    // 之前LTV
-	AfterLTV         float64       `json:"afterLTV,string"`  // 之后LTV
-	AdjustTime       types.Time    `json:"adjustTime"`       // 调整时间
+	PreviousLTV      float64       `json:"preLTV,string"`           // 之前LTV
+	AfterLTV         float64       `json:"afterLTV,string"`         // 之后LTV
+	AdjustTime       types.Time    `json:"adjustTime"`              // 调整时间
 }
 
 // FlexibleLoanLTVAdjustmentHistory 存储灵活借贷LTV调整历史
@@ -996,10 +996,10 @@ type FlexibleLoanLTVAdjustmentHistory struct {
 
 // FlexibleLoanAssetsDataItem 存储灵活借贷资产数据项目
 type FlexibleLoanAssetsDataItem struct {
-	LoanCoin             currency.Code `json:"loanCoin"`             // 借贷币种
+	LoanCoin             currency.Code `json:"loanCoin"`                    // 借贷币种
 	FlexibleInterestRate float64       `json:"flexibleInterestRate,string"` // 灵活利率
-	FlexibleMinLimit     float64       `json:"flexibleMinLimit,string"` // 灵活最小限额
-	FlexibleMaxLimit     float64       `json:"flexibleMaxLimit,string"` // 灵活最大限额
+	FlexibleMinLimit     float64       `json:"flexibleMinLimit,string"`     // 灵活最小限额
+	FlexibleMaxLimit     float64       `json:"flexibleMaxLimit,string"`     // 灵活最大限额
 }
 
 // FlexibleLoanAssetsData 存储灵活借贷资产数据
